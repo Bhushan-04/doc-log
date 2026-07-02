@@ -113,6 +113,7 @@ export async function runOpenWikiAgent(
     return {
       command,
       model: modelId,
+      target: options.target ?? null,
     };
   } catch (error) {
     if (error instanceof CursorAgentError) {
@@ -185,12 +186,14 @@ function createRunUserMessage(
     return options.userMessage.trim();
   }
 
+  const target = options.target ?? null;
+
   return `
-${createSystemPrompt(command)}
+${createSystemPrompt(command, target)}
 
 ---
 
-${createUserPrompt(command, context, options.userMessage ?? null)}
+${createUserPrompt(command, context, options.userMessage ?? null, target)}
 
 Repository root:
 ${cwd}
@@ -296,7 +299,7 @@ function mapSdkMessage(message: SDKMessage): OpenWikiRunEvent | null {
       ? {
           source: "main",
           type: "text",
-          text: `${text}\n\n`,
+          text,
         }
       : null;
   }
