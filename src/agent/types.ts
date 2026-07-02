@@ -1,9 +1,4 @@
-export type OpenWikiCommand =
-  | "chat"
-  | "init"
-  | "update"
-  | "flow"
-  | "section";
+export type OpenWikiCommand = "chat" | "init" | "update" | "flow" | "section";
 
 export type OpenWikiRunResult = {
   command: OpenWikiCommand;

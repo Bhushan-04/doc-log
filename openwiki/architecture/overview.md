@@ -43,12 +43,12 @@ The CLI entry point:
 
 `parseCommand(argv)` maps argv to a `CliCommand`:
 
-| Kind | Trigger | Behavior |
-|------|---------|----------|
-| `help` | `--help`, `-h` | Print usage via `getHelpText()` |
-| `doctor` | `--doctor`, `doctor` | Run diagnostics (`doctor.ts`) |
-| `run` | default | Interactive or one-shot agent run |
-| `error` | invalid flags | Exit code 1 with message |
+| Kind     | Trigger              | Behavior                          |
+| -------- | -------------------- | --------------------------------- |
+| `help`   | `--help`, `-h`       | Print usage via `getHelpText()`   |
+| `doctor` | `--doctor`, `doctor` | Run diagnostics (`doctor.ts`)     |
+| `run`    | default              | Interactive or one-shot agent run |
+| `error`  | invalid flags        | Exit code 1 with message          |
 
 Run commands resolve to an `OpenWikiCommand`: `"chat"` (default), `"init"`, or `"update"`. Flags:
 
@@ -71,12 +71,12 @@ Development mode (`DOC_LOG_DEV=1`) exposes extra help sections and `--dry-run`.
 
 **Startup modes:**
 
-| Mode | Behavior |
-|------|----------|
-| Interactive chat | Opens input; user can type messages or slash commands |
-| `doc-log --init` / `--update` | Runs once, auto-exits on success (`shouldAutoExitStartupRun`) |
-| `doc-log -p "..."` | Non-interactive; streams assistant text to stdout (`runPrintCommand`) |
-| `--dry-run` | Shows execution plan without calling the agent or reading credentials |
+| Mode                          | Behavior                                                              |
+| ----------------------------- | --------------------------------------------------------------------- |
+| Interactive chat              | Opens input; user can type messages or slash commands                 |
+| `doc-log --init` / `--update` | Runs once, auto-exits on success (`shouldAutoExitStartupRun`)         |
+| `doc-log -p "..."`            | Non-interactive; streams assistant text to stdout (`runPrintCommand`) |
+| `--dry-run`                   | Shows execution plan without calling the agent or reading credentials |
 
 **Slash commands** in interactive follow-up mode: `/init`, `/update`, `/model`, `/provider`, `/clear`, `/help`, `/exit` — implemented in `ChatInput` within `cli.tsx`.
 
@@ -167,14 +167,14 @@ Future `--update` runs prefer diffing from `gitHead` when present.
 
 ### Constants (`src/constants.ts`)
 
-| Symbol | Value / role |
-|--------|----------------|
-| `OPEN_WIKI_DIR` | `"openwiki"` |
-| `UPDATE_METADATA_PATH` | `openwiki/.last-update.json` |
-| `CURSOR_API_KEY_ENV_KEY` | `CURSOR_API_KEY` |
-| `OPENWIKI_MODEL_ID_ENV_KEY` | `DOC_LOG_MODEL_ID` |
-| `OPENWIKI_PROVIDER_ENV_KEY` | `DOC_LOG_PROVIDER` |
-| `DEFAULT_MODEL_ID` | First entry in provider config (`composer-2.5`) |
+| Symbol                      | Value / role                                    |
+| --------------------------- | ----------------------------------------------- |
+| `OPEN_WIKI_DIR`             | `"openwiki"`                                    |
+| `UPDATE_METADATA_PATH`      | `openwiki/.last-update.json`                    |
+| `CURSOR_API_KEY_ENV_KEY`    | `CURSOR_API_KEY`                                |
+| `OPENWIKI_MODEL_ID_ENV_KEY` | `DOC_LOG_MODEL_ID`                              |
+| `OPENWIKI_PROVIDER_ENV_KEY` | `DOC_LOG_PROVIDER`                              |
+| `DEFAULT_MODEL_ID`          | First entry in provider config (`composer-2.5`) |
 
 `isValidModelId` allows alphanumeric IDs with `._:/+-` (max 120 chars).
 
@@ -207,12 +207,12 @@ Returns exit code 1 if API key missing or Cursor API check fails.
 
 ## Build and module graph
 
-| File | Role |
-|------|------|
-| `tsconfig.json` | ES2022, NodeNext modules, JSX react, outDir `dist/`, `rootDir` `src/` |
-| `package.json` | `bin.doc-log` → `./dist/cli.js` |
-| `sdk-bootstrap.ts` | Ripgrep path resolution for Cursor SDK (side effect on import) |
-| Dependencies | `@cursor/sdk`, `ink`, `react`, `marked` (terminal markdown rendering for assistant output) |
+| File               | Role                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------ |
+| `tsconfig.json`    | ES2022, NodeNext modules, JSX react, outDir `dist/`, `rootDir` `src/`                      |
+| `package.json`     | `bin.doc-log` → `./dist/cli.js`                                                            |
+| `sdk-bootstrap.ts` | Ripgrep path resolution for Cursor SDK (side effect on import)                             |
+| Dependencies       | `@cursor/sdk`, `ink`, `react`, `marked` (terminal markdown rendering for assistant output) |
 
 There is no separate server or database. All persistent state is:
 
@@ -221,13 +221,13 @@ There is no separate server or database. All persistent state is:
 
 ## Extension points
 
-| Goal | Likely touch points |
-|------|---------------------|
-| New CLI flag | `commands.ts`, `cli.tsx`, possibly `helpContent` |
-| New provider | `constants.ts` `PROVIDER_CONFIGS`, credential flow |
-| Documentation policy | `agent/prompt.ts` mode instructions |
-| Richer git context | `agent/utils.ts` `createGitSummary` |
-| New run artifacts | `agent/index.ts` post-run hooks, snapshot exclusions in `utils.ts` |
+| Goal                 | Likely touch points                                                |
+| -------------------- | ------------------------------------------------------------------ |
+| New CLI flag         | `commands.ts`, `cli.tsx`, possibly `helpContent`                   |
+| New provider         | `constants.ts` `PROVIDER_CONFIGS`, credential flow                 |
+| Documentation policy | `agent/prompt.ts` mode instructions                                |
+| Richer git context   | `agent/utils.ts` `createGitSummary`                                |
+| New run artifacts    | `agent/index.ts` post-run hooks, snapshot exclusions in `utils.ts` |
 
 ## Related reading
 

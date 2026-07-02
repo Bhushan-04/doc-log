@@ -38,13 +38,7 @@ function resolvePlatformPackageRipgrep(): string | undefined {
   try {
     const sdkPackageJsonPath = require.resolve("@cursor/sdk/package.json");
     const sdkRoot = path.dirname(sdkPackageJsonPath);
-    const candidate = path.join(
-      sdkRoot,
-      "..",
-      platformPackage,
-      "bin",
-      exe,
-    );
+    const candidate = path.join(sdkRoot, "..", platformPackage, "bin", exe);
 
     if (existsSync(candidate)) {
       return candidate;
@@ -133,8 +127,7 @@ export function bootstrapCursorSdkEnv(): void {
   }
 
   const bundled =
-    resolvePlatformPackageRipgrep() ??
-    resolveEditorBundledRipgrep();
+    resolvePlatformPackageRipgrep() ?? resolveEditorBundledRipgrep();
   const onPath = bundled ? undefined : resolveRipgrepOnPath();
   const resolved = bundled ?? onPath;
 

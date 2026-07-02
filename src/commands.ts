@@ -66,7 +66,10 @@ export function parseCommand(argv: string[]): CliCommand {
     }
 
     const isTargetSubcommand =
-      (arg === "flow" || arg === "section" || arg === "--flow" || arg === "--section") &&
+      (arg === "flow" ||
+        arg === "section" ||
+        arg === "--flow" ||
+        arg === "--section") &&
       command === "chat" &&
       userMessageParts.length === 0;
 

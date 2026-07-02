@@ -6,12 +6,12 @@ Doc-Log is a fork of [langchain-ai/openwiki](https://github.com/langchain-ai/ope
 
 ## Product model
 
-| Actor | Role |
-|-------|------|
-| **User** | Runs `doc-log` from a target repository's root; configures credentials once in `~/.doc-log/.env` |
-| **Doc-Log CLI** | Parses commands, manages terminal UI, orchestrates Cursor agent, tracks threads and run metadata |
+| Actor                   | Role                                                                                                                    |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **User**                | Runs `doc-log` from a target repository's root; configures credentials once in `~/.doc-log/.env`                        |
+| **Doc-Log CLI**         | Parses commands, manages terminal UI, orchestrates Cursor agent, tracks threads and run metadata                        |
 | **Documentation agent** | Inspects the target repo (read-only except `openwiki/` and top-level `AGENTS.md`/`CLAUDE.md`), writes grounded Markdown |
-| **Target repository** | Receives `openwiki/` docs plus optional agent-instruction file updates so future coding agents find the wiki |
+| **Target repository**   | Receives `openwiki/` docs plus optional agent-instruction file updates so future coding agents find the wiki            |
 
 Three run modes: **chat** (Q&A, no doc writes unless asked), **init** (first wiki pass), **update** (surgical refresh from git/source changes since last successful run).
 
@@ -28,11 +28,11 @@ Interactive chat (`doc-log` with no init/update flag) answers questions about th
 
 ## Requirements
 
-| Requirement | Notes |
-|-------------|-------|
-| Node.js 20+ | See `package.json` `engines` |
-| `git` on PATH | Used for change summaries during init/update |
-| `CURSOR_API_KEY` | Create at Cursor Dashboard → Integrations |
+| Requirement      | Notes                                        |
+| ---------------- | -------------------------------------------- |
+| Node.js 20+      | See `package.json` `engines`                 |
+| `git` on PATH    | Used for change summaries during init/update |
+| `CURSOR_API_KEY` | Create at Cursor Dashboard → Integrations    |
 
 ## Install Doc-Log (from this repository)
 
@@ -62,14 +62,14 @@ On the first interactive run, Doc-Log prompts for `CURSOR_API_KEY` and a default
 
 ### Useful options
 
-| Option | Purpose |
-|--------|---------|
-| `--init [message]` | Generate initial `openwiki/` documentation |
-| `--update [message]` | Update existing docs from repo/git changes |
-| `-p`, `--print` | One-shot run; print final output and exit |
-| `--modelId <id>` | Override model for this run (e.g. `composer-2.5`, `auto`) |
-| `--doctor` | Check Node, git, credentials, Cursor API, available models |
-| `--dry-run` | Dev only (`DOC_LOG_DEV=1`): show what would run without calling the agent |
+| Option               | Purpose                                                                   |
+| -------------------- | ------------------------------------------------------------------------- |
+| `--init [message]`   | Generate initial `openwiki/` documentation                                |
+| `--update [message]` | Update existing docs from repo/git changes                                |
+| `-p`, `--print`      | One-shot run; print final output and exit                                 |
+| `--modelId <id>`     | Override model for this run (e.g. `composer-2.5`, `auto`)                 |
+| `--doctor`           | Check Node, git, credentials, Cursor API, available models                |
+| `--dry-run`          | Dev only (`DOC_LOG_DEV=1`): show what would run without calling the agent |
 
 Follow-up messages in one interactive session resume the same Cursor agent thread (mapped in `~/.doc-log/threads.json`). On follow-ups, Doc-Log sends **only the user's new message** to the resumed agent — it does not re-send the full system prompt (`isFollowup` in `src/agent/index.ts`).
 
@@ -77,15 +77,15 @@ Follow-up messages in one interactive session resume the same Cursor agent threa
 
 After a run completes, the chat input accepts slash commands (see `src/cli.tsx`):
 
-| Command | Action |
-|---------|--------|
-| `/init [message]` | Run initial wiki generation |
-| `/update [message]` | Refresh existing wiki from repo changes |
+| Command                   | Action                                           |
+| ------------------------- | ------------------------------------------------ |
+| `/init [message]`         | Run initial wiki generation                      |
+| `/update [message]`       | Refresh existing wiki from repo changes          |
 | `/model` or `/model <id>` | Switch Cursor model (saved to `~/.doc-log/.env`) |
-| `/provider` | Switch provider (currently only Cursor) |
-| `/clear` | Start a fresh thread and clear chat history |
-| `/help` | List slash commands |
-| `/exit` | Quit |
+| `/provider`               | Switch provider (currently only Cursor)          |
+| `/clear`                  | Start a fresh thread and clear chat history      |
+| `/help`                   | List slash commands                              |
+| `/exit`                   | Quit                                             |
 
 Init and update runs from the CLI (`doc-log --init`) auto-exit when finished; interactive chat stays open for follow-ups.
 
@@ -93,11 +93,11 @@ Init and update runs from the CLI (`doc-log --init`) auto-exit when finished; in
 
 User-level configuration lives in `~/.doc-log/.env`:
 
-| Key | Purpose |
-|-----|---------|
-| `CURSOR_API_KEY` | Cursor API key for all runs |
+| Key                | Purpose                                                      |
+| ------------------ | ------------------------------------------------------------ |
+| `CURSOR_API_KEY`   | Cursor API key for all runs                                  |
 | `DOC_LOG_MODEL_ID` | Default model (built-in suggestions: `composer-2.5`, `auto`) |
-| `DOC_LOG_PROVIDER` | Provider selector (currently only `cursor`) |
+| `DOC_LOG_PROVIDER` | Provider selector (currently only `cursor`)                  |
 
 Environment variables always override the file. Debug flags:
 
@@ -175,23 +175,23 @@ GitHub Actions (`.github/workflows/checks.yml`) runs `format:check` and `lint:ch
 
 ## Where to go next
 
-| Topic | Page |
-|-------|------|
+| Topic                                                | Page                                              |
+| ---------------------------------------------------- | ------------------------------------------------- |
 | CLI flow, agent orchestration, prompts, git/metadata | [Architecture overview](architecture/overview.md) |
-| Package scripts, linking, dry-run | [DEVELOPMENT.md](../DEVELOPMENT.md) |
-| User-facing install and usage | [README.md](../README.md) |
+| Package scripts, linking, dry-run                    | [DEVELOPMENT.md](../DEVELOPMENT.md)               |
+| User-facing install and usage                        | [README.md](../README.md)                         |
 
 ## Change guidance for agents
 
 When modifying Doc-Log:
 
-| Area | Start here | Watch out for |
-|------|------------|---------------|
-| CLI flags / help | `src/commands.ts` | Keep `parseCommand` and `helpContent` in sync |
-| Terminal UI | `src/cli.tsx` | Large React/Ink component; test interactive and `--print` modes |
-| Agent behavior | `src/agent/prompt.ts` | Prompt changes affect all documented repos |
-| Run metadata / git context | `src/agent/utils.ts` | Update runs depend on `.last-update.json` and `gitHead` |
-| Credentials | `src/env.ts`, `src/credentials.tsx` | Never log or document secret values |
-| Models / env keys | `src/constants.ts` | `isValidModelId` regex must accept Cursor model IDs |
+| Area                       | Start here                          | Watch out for                                                   |
+| -------------------------- | ----------------------------------- | --------------------------------------------------------------- |
+| CLI flags / help           | `src/commands.ts`                   | Keep `parseCommand` and `helpContent` in sync                   |
+| Terminal UI                | `src/cli.tsx`                       | Large React/Ink component; test interactive and `--print` modes |
+| Agent behavior             | `src/agent/prompt.ts`               | Prompt changes affect all documented repos                      |
+| Run metadata / git context | `src/agent/utils.ts`                | Update runs depend on `.last-update.json` and `gitHead`         |
+| Credentials                | `src/env.ts`, `src/credentials.tsx` | Never log or document secret values                             |
+| Models / env keys          | `src/constants.ts`                  | `isValidModelId` regex must accept Cursor model IDs             |
 
 After code changes: `pnpm run build`, then exercise `doc-log --doctor` and a `--dry-run` or real init/update against a sample repo.
