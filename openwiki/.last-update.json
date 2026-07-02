@@ -1,0 +1,6 @@
+{
+  "updatedAt": "2026-07-02T19:48:47.178Z",
+  "command": "init",
+  "gitHead": "HEAD\nfatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.\nUse '--' to separate paths from revisions, like this:\n'git <command> [<revision>...] -- [<file>...]'",
+  "model": "composer-2.5"
+}
