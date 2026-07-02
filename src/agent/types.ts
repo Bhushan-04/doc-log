@@ -1,8 +1,14 @@
-export type OpenWikiCommand = "chat" | "init" | "update";
+export type OpenWikiCommand =
+  | "chat"
+  | "init"
+  | "update"
+  | "flow"
+  | "section";
 
 export type OpenWikiRunResult = {
   command: OpenWikiCommand;
   model: string;
+  target?: string | null;
 };
 
 export type OpenWikiRunEvent =
@@ -34,6 +40,7 @@ export type OpenWikiRunOptions = {
   isFollowup?: boolean;
   modelId?: string | null;
   onEvent?: (event: OpenWikiRunEvent) => void;
+  target?: string | null;
   threadId?: string;
   userMessage?: string | null;
 };

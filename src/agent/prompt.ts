@@ -1,6 +1,62 @@
 import { OPEN_WIKI_DIR, UPDATE_METADATA_PATH } from "../constants.js";
 import { OpenWikiCommand, RunContext, UpdateMetadata } from "./types.js";
 
+/**
+ * Fixed 11-section template for deep-dive flow pages. Sections 4-7 and 10 are
+ * the embedded SDK-refactor blueprint: they capture the data/type contract, the
+ * hook/service/store layer map, and inconsistencies worth extracting into a
+ * framework-agnostic core package.
+ */
+export const DEEP_DIVE_TEMPLATE = `
+Every deep-dive flow page must use this exact section order and headings. Ground every claim in specific source files and cite them inline as \`path/to/file.ext\`. If something cannot be verified from source, say so explicitly instead of guessing.
+
+## 1. Overview and purpose
+- What this flow does and the user/product problem it solves.
+- When it runs and who triggers it.
+
+## 2. Entry points and triggers
+- Routes, URL params, guards, and query/state that activate the flow.
+- User actions and events that start it. Cite the components/handlers.
+
+## 3. UI component tree
+- The components involved, their hierarchy, and key props.
+- Which component owns rendering vs. which are presentational. Cite files.
+
+## 4. State layer
+- Stores (e.g. Zustand) and React context that back this flow.
+- State shape, actions/mutations, and selectors. Cite the store files.
+
+## 5. Hooks layer
+- Custom hooks used, their responsibilities, inputs, and outputs.
+- Data-fetching hooks (e.g. SWR) and their keys/params. Cite hook files.
+
+## 6. Services and API layer
+- Endpoints called, HTTP method, request/response shape.
+- API helper/client usage and where base URLs/headers/auth come from. Cite files.
+
+## 7. Data and type contract
+- The canonical types/interfaces that flow through the feature (the SDK contract).
+- Where they are defined and how they transform across layers. Cite type files.
+
+## 8. End-to-end flow
+- A Mermaid \`sequenceDiagram\` for the happy path and a \`flowchart\` for the key decisions.
+- A numbered step-by-step walkthrough including loading, empty, and error states.
+
+## 9. Edge cases and failure modes
+- All notable cases: unauthorized, empty results, rate limits, offline/retry, pagination boundaries, race conditions, optimistic vs. server state.
+- What the UI shows and how state recovers for each.
+
+## 10. SDK-refactor blueprint
+- Pure business logic that should move into a framework-agnostic core package (e.g. \`@fotoowl/gallery-core\`): list the functions/state machines/selectors.
+- UI-only concerns that must stay in components.
+- A proposed headless surface: the hooks/functions and their signatures a UI would call to reproduce this flow.
+- Inconsistencies and anti-patterns found (logic in components, duplicated fetching, ad-hoc state, mixed concerns) that block clean extraction. Be specific with file references.
+
+## 11. Change guide and tests
+- Where to start when changing this flow and what to watch out for.
+- Relevant tests/checks, and what new tests a refactor should add.
+`.trim();
+
 function formatLastUpdate(lastUpdate: UpdateMetadata | null): string {
   if (lastUpdate === null) {
     return "No previous OpenWiki update metadata was found.";
@@ -9,7 +65,10 @@ function formatLastUpdate(lastUpdate: UpdateMetadata | null): string {
   return JSON.stringify(lastUpdate, null, 2);
 }
 
-export function createSystemPrompt(command: OpenWikiCommand): string {
+export function createSystemPrompt(
+  command: OpenWikiCommand,
+  target: string | null = null,
+): string {
   return `
 You are Doc-Log, an expert technical writer, software architect, and product analyst.
 
@@ -126,11 +185,51 @@ Required documentation structure:
 - Track the last successful documentation update in ${UPDATE_METADATA_PATH}.
 
 Mode-specific behavior:
-${createModeInstructions(command)}
+${createModeInstructions(command, target)}
 `.trim();
 }
 
-export function createModeInstructions(command: OpenWikiCommand): string {
+export function createModeInstructions(
+  command: OpenWikiCommand,
+  target: string | null = null,
+): string {
+  if (command === "flow") {
+    const flow = target ?? "the requested flow";
+    return `
+- This is a deep-dive flow documentation run for: ${flow}.
+- Produce ONE detailed page at ${OPEN_WIKI_DIR}/flows/${flow}.md that fully explains this single flow end to end.
+- First discover the real implementation: find the routes, components, hooks, stores, services, and types that make up this flow. Do not document a flow you cannot locate in source; if the name is ambiguous, pick the closest real flow and state which one you chose and why at the top of the page.
+- The page MUST follow this exact template, in this order, with these headings:
+
+${DEEP_DIVE_TEMPLATE}
+
+- Treat sections 4-7 and 10 as an SDK blueprint: be precise about the business logic, data contracts, and what should become framework-agnostic.
+- Add or update a link to this page from ${OPEN_WIKI_DIR}/quickstart.md (and a flows index if one exists) so it is discoverable.
+- Do not rewrite unrelated pages. This run is scoped to the ${flow} flow page plus the minimal navigation link needed.
+- The CLI will record successful run metadata in ${UPDATE_METADATA_PATH} after you finish.
+`.trim();
+  }
+
+  if (command === "section") {
+    const area = target ?? "the requested area";
+    return `
+- This is a section documentation run for the domain/area: ${area}.
+- Build a cohesive section under ${OPEN_WIKI_DIR}/${area}/ with:
+  - ${OPEN_WIKI_DIR}/${area}/overview.md: what the area is, its responsibilities, architecture, key files, and how its parts fit together.
+  - One deep-dive page per major flow in this area at ${OPEN_WIKI_DIR}/${area}/flows/<flow-name>.md, each following the deep-dive template below.
+  - Optionally ${OPEN_WIKI_DIR}/${area}/reference.md for the shared types, stores, hooks, and services the flows depend on (the SDK contract for the area).
+- First inventory the area from source: enumerate the real flows, components, hooks, stores, services, and types before writing. Only document flows that exist in the code.
+- Each deep-dive flow page MUST follow this exact template, in this order, with these headings:
+
+${DEEP_DIVE_TEMPLATE}
+
+- Keep the section internally linked: overview links to each flow page and to the reference page; flow pages link back to the overview.
+- Link the section overview from ${OPEN_WIKI_DIR}/quickstart.md so it is discoverable.
+- Do not rewrite unrelated sections. This run is scoped to the ${area} section.
+- The CLI will record successful run metadata in ${UPDATE_METADATA_PATH} after you finish.
+`.trim();
+  }
+
   if (command === "chat") {
     return `
 - This is an interactive chat turn.
@@ -178,9 +277,40 @@ export function createUserPrompt(
   command: OpenWikiCommand,
   context: RunContext,
   userMessage: string | null = null,
+  target: string | null = null,
 ): string {
   if (command === "chat") {
     return userMessage?.trim() || "Start a Doc-Log chat.";
+  }
+
+  if (command === "flow") {
+    const flow = target ?? "the requested flow";
+    return appendUserMessage(
+      `
+Write a deep-dive documentation page for the "${flow}" flow in this repository.
+
+Locate the real implementation of this flow in source (routes, components, hooks, stores, services, and types), then write ${OPEN_WIKI_DIR}/flows/${flow}.md following the required deep-dive template exactly. Be precise about business logic, data/type contracts, edge cases, and what should be extracted into a framework-agnostic SDK core. Cite source files inline. Link the page from ${OPEN_WIKI_DIR}/quickstart.md.
+
+Git context:
+${context.gitSummary}
+`.trim(),
+      userMessage,
+    );
+  }
+
+  if (command === "section") {
+    const area = target ?? "the requested area";
+    return appendUserMessage(
+      `
+Build a full documentation section for the "${area}" area of this repository.
+
+Inventory the area from source, then write ${OPEN_WIKI_DIR}/${area}/overview.md plus one deep-dive page per major flow under ${OPEN_WIKI_DIR}/${area}/flows/, each following the required deep-dive template exactly. Add an optional ${OPEN_WIKI_DIR}/${area}/reference.md for the shared types, stores, hooks, and services (the SDK contract). Keep the section internally linked and link the overview from ${OPEN_WIKI_DIR}/quickstart.md.
+
+Git context:
+${context.gitSummary}
+`.trim(),
+      userMessage,
+    );
   }
 
   if (command === "init") {

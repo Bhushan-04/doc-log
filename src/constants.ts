@@ -97,4 +97,22 @@ export function isValidModelId(value: string): boolean {
   );
 }
 
+export function normalizeTarget(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/gu, "-")
+    .replace(/[^a-z0-9-]/gu, "")
+    .replace(/-+/gu, "-")
+    .replace(/^-|-$/gu, "");
+}
+
+export function isValidTarget(value: string): boolean {
+  const target = normalizeTarget(value);
+
+  return (
+    target.length > 0 && target.length <= 80 && /^[a-z0-9][a-z0-9-]*$/u.test(target)
+  );
+}
+
 export const OPENWIKI_VERSION = "0.1.0";

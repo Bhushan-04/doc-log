@@ -33,8 +33,10 @@ import {
   getProviderLabel,
   getProviderModelOptions,
   isValidModelId,
+  isValidTarget,
   normalizeModelId,
   normalizeProvider,
+  normalizeTarget,
   OPENWIKI_PROVIDER_ENV_KEY,
   OPENWIKI_MODEL_ID_ENV_KEY,
   OPEN_WIKI_DIR,
@@ -53,6 +55,7 @@ type RunState =
       status: "running";
       command: OpenWikiCommand;
       log: RunLogItem[];
+      target?: string | null;
       credentialDiagnostics?: CredentialDiagnostic[];
     }
   | {
@@ -99,6 +102,11 @@ type ErrorDiagnostic = {
 
 type AppCommand = Exclude<CliCommand, { kind: "doctor" }>;
 
+type CommandRunCommand = Extract<
+  OpenWikiCommand,
+  "init" | "update" | "flow" | "section"
+>;
+
 type AppProps = {
   command: AppCommand;
 };
@@ -142,6 +150,9 @@ function App({ command }: AppProps) {
   const [activeMessageIsFollowup, setActiveMessageIsFollowup] = useState(
     command.kind === "run" && command.command === "chat",
   );
+  const [activeTarget, setActiveTarget] = useState<string | null>(
+    command.kind === "run" ? command.target : null,
+  );
   const [resolvedCommand, setResolvedCommand] =
     useState<OpenWikiCommand | null>(
       command.kind === "run" && command.shouldStart ? command.command : null,
@@ -164,16 +175,19 @@ function App({ command }: AppProps) {
 
     setActiveUserMessage(message);
     setActiveMessageIsFollowup(true);
+    setActiveTarget(null);
     setResolvedCommand("chat");
     setRunState({ status: "idle" });
   }
 
   function submitCommandRun(
-    nextCommand: Extract<OpenWikiCommand, "init" | "update">,
+    nextCommand: CommandRunCommand,
     message: string | null,
+    target: string | null = null,
   ) {
     setActiveUserMessage(message);
     setActiveMessageIsFollowup(false);
+    setActiveTarget(target);
     setResolvedCommand(nextCommand);
     setRunState({ status: "idle" });
   }
@@ -188,6 +202,7 @@ function App({ command }: AppProps) {
     setCompletedRuns([]);
     setActiveUserMessage(null);
     setActiveMessageIsFollowup(false);
+    setActiveTarget(null);
     setResolvedCommand(null);
     setRunState({ status: "idle" });
   }
@@ -267,6 +282,7 @@ function App({ command }: AppProps) {
       status: "running",
       command: resolvedCommand,
       log: [],
+      target: activeTarget,
     });
 
     if (shouldShowCredentialDiagnostics()) {
@@ -295,6 +311,7 @@ function App({ command }: AppProps) {
       debug: isDebugMode(),
       isFollowup: activeMessageIsFollowup,
       modelId: sessionModelId,
+      target: activeTarget,
       threadId: sessionThreadId.current,
       userMessage: activeUserMessage,
       onEvent: (event) => {
@@ -368,6 +385,7 @@ function App({ command }: AppProps) {
     app,
     command,
     activeMessageIsFollowup,
+    activeTarget,
     activeUserMessage,
     resolvedCommand,
     runState.status,
@@ -409,6 +427,7 @@ function App({ command }: AppProps) {
         command={command.command}
         modelId={command.modelId}
         shouldStart={command.shouldStart}
+        target={command.target}
         userMessage={command.userMessage}
       />
     );
@@ -474,6 +493,7 @@ function App({ command }: AppProps) {
           log={runState.log}
           message={activeUserMessage}
           modelId={displayModelId}
+          target={runState.target ?? null}
         />
       </Box>
     );
@@ -489,6 +509,7 @@ function App({ command }: AppProps) {
           log={runState.log}
           message={activeUserMessage}
           modelId={runState.result.model}
+          target={runState.result.target ?? null}
         />
       );
     }
@@ -600,11 +621,13 @@ function DryRunView({
   command,
   modelId,
   shouldStart,
+  target,
   userMessage,
 }: {
   command: OpenWikiCommand;
   modelId: string | null;
   shouldStart: boolean;
+  target: string | null;
   userMessage: string | null;
 }) {
   return (
@@ -614,9 +637,12 @@ function DryRunView({
         <StatusLine
           tone="active"
           label="Command"
-          value={`doc-log ${command}`}
+          value={formatRunLabel(command, target)}
         />
         <StatusLine tone="muted" label="Mode" value={command} />
+        {target ? (
+          <StatusLine tone="muted" label="Target" value={target} />
+        ) : null}
         <StatusLine
           tone="muted"
           label="Credentials"
@@ -820,6 +846,7 @@ type RunViewProps = {
   done?: boolean;
   message?: string | null;
   modelId?: string | null;
+  target?: string | null;
 };
 
 function RunView({
@@ -829,6 +856,7 @@ function RunView({
   done = false,
   message = null,
   modelId = null,
+  target = null,
 }: RunViewProps) {
   const [animationFrame, setAnimationFrame] = useState(0);
   const activeRunningToolId = getActiveRunningToolLogId(log);
@@ -861,7 +889,7 @@ function RunView({
         <Text>
           <Text color={done ? "green" : "cyan"}>* </Text>
           <Text bold>{done ? "Complete" : "Working"}</Text>{" "}
-          <Text color="gray">doc-log {command}</Text>
+          <Text color="gray">{formatRunLabel(command, target)}</Text>
           {!done ? <Text color="gray"> - streaming</Text> : null}
         </Text>
         <Box flexDirection="column" marginLeft={2} marginTop={1}>
@@ -1197,7 +1225,8 @@ function ChatHistory({ runs }: { runs: CompletedRun[] }) {
             <Text color="green">* </Text>
             <Text bold>Complete</Text>{" "}
             <Text color="gray">
-              doc-log {run.command} - {run.result.model}
+              {formatRunLabel(run.command, run.result.target ?? null)} -{" "}
+              {run.result.model}
             </Text>
           </Text>
           <Box flexDirection="column" marginLeft={2} marginTop={1}>
@@ -1218,8 +1247,9 @@ type ChatInputProps = {
   currentProvider: OpenWikiProvider;
   onClear: () => void;
   onCommandRun: (
-    command: Extract<OpenWikiCommand, "init" | "update">,
+    command: CommandRunCommand,
     message: string | null,
+    target?: string | null,
   ) => void;
   onModelSelect: (modelId: string) => Promise<void>;
   onProviderSelect: (provider: OpenWikiProvider) => Promise<void>;
@@ -1429,6 +1459,33 @@ function ChatInput({
       return;
     }
 
+    if (option.id === "flow" || option.id === "section") {
+      const parts = (args ?? "").trim().split(/\s+/u).filter(Boolean);
+      const rawTarget = parts[0];
+
+      if (!rawTarget) {
+        setError(
+          `/${option.id} needs a name, e.g. /${option.id} access-control`,
+        );
+        return;
+      }
+
+      const target = normalizeTarget(rawTarget);
+
+      if (!isValidTarget(target)) {
+        setError(
+          `Invalid ${option.id} name. Use lowercase letters, numbers, and hyphens.`,
+        );
+        return;
+      }
+
+      const message = parts.slice(1).join(" ");
+
+      resetInput();
+      onCommandRun(option.id, message.length > 0 ? message : null, target);
+      return;
+    }
+
     if (option.id === "clear") {
       resetInput();
       onClear();
@@ -1439,7 +1496,7 @@ function ChatInput({
     if (option.id === "help") {
       resetInput();
       setNotice(
-        "Slash commands: /provider, /model, /init, /update, /clear, /help, /exit. Use arrows to select.",
+        "Slash commands: /provider, /model, /init, /update, /flow <name>, /section <area>, /clear, /help, /exit. Use arrows to select.",
       );
       return;
     }
@@ -1607,10 +1664,12 @@ type ChatInputMenuState =
 type SlashCommandId =
   | "clear"
   | "exit"
+  | "flow"
   | "help"
   | "init"
   | "model"
   | "provider"
+  | "section"
   | "update";
 
 type SlashCommandOption = {
@@ -1650,6 +1709,16 @@ const slashCommandOptions: SlashCommandOption[] = [
     description: "Update existing OpenWiki documentation",
     id: "update",
     label: "/update",
+  },
+  {
+    description: "Deep-dive one flow: /flow <name>",
+    id: "flow",
+    label: "/flow",
+  },
+  {
+    description: "Document a whole area: /section <area>",
+    id: "section",
+    label: "/section",
   },
   {
     description: "Start a fresh thread and clear chat history",
@@ -2324,7 +2393,8 @@ function createToolDisplay(
   );
 
   switch (event.name) {
-    case "read_file": {
+    case "read_file":
+    case "read": {
       const count = countToolTargets(input, ["path", "paths", "file", "files"]);
       return pickToolDisplay(
         variantIndex,
@@ -2340,7 +2410,11 @@ function createToolDisplay(
         ],
       );
     }
-    case "edit_file": {
+    case "edit_file":
+    case "edit":
+    case "search_replace":
+    case "MultiEdit":
+    case "multi_edit": {
       const count = countToolTargets(input, ["path", "paths", "file", "files"]);
       return pickToolDisplay(
         variantIndex,
@@ -2357,7 +2431,9 @@ function createToolDisplay(
         false,
       );
     }
-    case "write_file": {
+    case "write_file":
+    case "write":
+    case "create_file": {
       const count = countToolTargets(input, ["path", "paths", "file", "files"]);
       return pickToolDisplay(
         variantIndex,
@@ -2374,13 +2450,26 @@ function createToolDisplay(
         false,
       );
     }
+    case "delete_file":
+    case "delete": {
+      const count = countToolTargets(input, ["path", "paths", "file", "files"]);
+      return pickToolDisplay(
+        variantIndex,
+        [`Deleting ${formatCount(count, "file", "files")}`],
+        [`Deleted ${formatCount(count, "file", "files")}`],
+        false,
+      );
+    }
     case "ls":
+    case "list_dir":
       return pickToolDisplay(
         variantIndex,
         ["Listing files", "Scanning a directory", "Checking the file tree"],
         ["Listed files", "Scanned a directory", "Checked the file tree"],
       );
     case "glob":
+    case "glob_file_search":
+    case "file_search":
       return pickToolDisplay(
         variantIndex,
         [
@@ -2391,6 +2480,7 @@ function createToolDisplay(
         ["Found matching files", "Searched file paths", "Scanned for matches"],
       );
     case "grep":
+    case "ripgrep":
       return pickToolDisplay(
         variantIndex,
         [
@@ -2404,7 +2494,46 @@ function createToolDisplay(
           "Looked for matches",
         ],
       );
-    case "write_todos": {
+    case "codebase_search":
+    case "semantic_search":
+      return pickToolDisplay(
+        variantIndex,
+        [
+          "Searching the codebase",
+          "Exploring related code",
+          "Looking for relevant code",
+        ],
+        [
+          "Searched the codebase",
+          "Explored related code",
+          "Looked for relevant code",
+        ],
+      );
+    case "run_terminal_cmd":
+    case "shell":
+    case "terminal":
+      return pickToolDisplay(
+        variantIndex,
+        ["Running a command", "Executing a shell command", "Running git"],
+        ["Ran a command", "Executed a shell command", "Ran git"],
+      );
+    case "web_search":
+      return pickToolDisplay(
+        variantIndex,
+        ["Searching the web"],
+        ["Searched the web"],
+      );
+    case "fetch":
+    case "web_fetch":
+    case "read_url":
+      return pickToolDisplay(
+        variantIndex,
+        ["Fetching a page"],
+        ["Fetched a page"],
+      );
+    case "write_todos":
+    case "todo_write":
+    case "update_todos": {
       const count = countTodoItems(input);
       return pickToolDisplay(
         variantIndex,
@@ -2441,13 +2570,25 @@ function createToolDisplay(
         ],
       );
     }
-    default:
+    default: {
+      const readable = humanizeToolName(event.name);
       return {
-        done: event.call,
-        running: event.call,
-        showDetail: false,
+        done: `Ran ${readable}`,
+        running: `Running ${readable}`,
+        showDetail: true,
       };
+    }
   }
+}
+
+function humanizeToolName(name: string): string {
+  const readable = name
+    .replace(/([a-z0-9])([A-Z])/gu, "$1 $2")
+    .replace(/[_-]+/gu, " ")
+    .trim()
+    .toLowerCase();
+
+  return readable.length > 0 ? readable : "an action";
 }
 
 function pickToolDisplay(
@@ -2568,6 +2709,13 @@ function truncateToDisplayLines(
   }
 
   return lines.join("\n");
+}
+
+function formatRunLabel(
+  command: OpenWikiCommand,
+  target: string | null,
+): string {
+  return target ? `doc-log ${command} ${target}` : `doc-log ${command}`;
 }
 
 function formatCwd(cwd: string): string {
@@ -2890,7 +3038,7 @@ function shouldAutoExitStartupRun(command: CliCommand): boolean {
     !command.dryRun &&
     !command.print &&
     command.shouldStart &&
-    (command.command === "init" || command.command === "update")
+    command.command !== "chat"
   );
 }
 

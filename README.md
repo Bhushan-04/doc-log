@@ -35,11 +35,32 @@ doc-log                      # interactive chat about the repo/docs
 doc-log "message"            # chat with an initial request
 doc-log --init [message]     # generate initial documentation in openwiki/
 doc-log --update [message]   # surgically refresh docs from repo changes
+doc-log flow <name>          # deep-dive, SDK-blueprint page for one flow
+doc-log section <area>       # full domain section (overview + flows + reference)
 doc-log -p "message"         # one-shot run, print output, exit
 doc-log --modelId <id>       # use a specific Cursor model for the run
 doc-log --doctor             # environment/credential/model diagnostics
 doc-log --help               # usage and examples
 ```
+
+Inside interactive chat, the same runs are available as slash commands:
+`/init`, `/update`, `/flow <name>`, `/section <area>`, `/model`, `/provider`,
+`/clear`, `/help`, `/exit`.
+
+### Deep-dive flows and sections
+
+`doc-log flow <name>` writes a single, thorough page at
+`openwiki/flows/<name>.md` using a fixed 11-section template: overview, entry
+points, UI component tree, state layer, hooks layer, services/API layer, the
+data/type contract, an end-to-end walkthrough with Mermaid diagrams, edge cases,
+an **SDK-refactor blueprint** (what business logic to extract into a
+framework-agnostic core, plus inconsistencies that block extraction), and a
+change guide. Names are slugs: lowercase letters, numbers, and hyphens.
+
+`doc-log section <area>` builds a cohesive section under `openwiki/<area>/`: an
+`overview.md`, one deep-dive page per flow in `openwiki/<area>/flows/`, and an
+optional `reference.md` capturing the shared types, stores, hooks, and services
+(the SDK contract for that area).
 
 ## How it works
 

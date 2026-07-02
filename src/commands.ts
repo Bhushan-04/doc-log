@@ -1,4 +1,9 @@
-import { isValidModelId, normalizeModelId } from "./constants.js";
+import {
+  isValidModelId,
+  isValidTarget,
+  normalizeModelId,
+  normalizeTarget,
+} from "./constants.js";
 import type { OpenWikiCommand } from "./agent/types.js";
 
 export type HelpRow = {
@@ -28,6 +33,7 @@ export type CliCommand =
       modelId: string | null;
       print: boolean;
       shouldStart: boolean;
+      target: string | null;
       userMessage: string | null;
     }
   | {
@@ -45,6 +51,7 @@ export function parseCommand(argv: string[]): CliCommand {
   let modelId: string | null = null;
   let print = false;
   let command: OpenWikiCommand = "chat";
+  let target: string | null = null;
   const userMessageParts: string[] = [];
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -56,6 +63,36 @@ export function parseCommand(argv: string[]): CliCommand {
 
     if (arg === "--doctor" || arg === "doctor") {
       return { kind: "doctor", exitCode: 0 };
+    }
+
+    const isTargetSubcommand =
+      (arg === "flow" || arg === "section" || arg === "--flow" || arg === "--section") &&
+      command === "chat" &&
+      userMessageParts.length === 0;
+
+    if (isTargetSubcommand) {
+      command = arg === "flow" || arg === "--flow" ? "flow" : "section";
+      const rawTarget = argv[index + 1];
+
+      if (!rawTarget || rawTarget.startsWith("-")) {
+        return {
+          kind: "error",
+          exitCode: 1,
+          message: `${command} requires a name, for example: doc-log ${command} access-control`,
+        };
+      }
+
+      if (!isValidTarget(rawTarget)) {
+        return {
+          kind: "error",
+          exitCode: 1,
+          message: `Invalid ${command} name: ${rawTarget}. Use lowercase letters, numbers, and hyphens.`,
+        };
+      }
+
+      target = normalizeTarget(rawTarget);
+      index += 1;
+      continue;
     }
 
     if (arg === "--dry-run") {
@@ -164,6 +201,7 @@ export function parseCommand(argv: string[]): CliCommand {
     modelId,
     print,
     shouldStart,
+    target,
     userMessage,
   };
 }
@@ -183,6 +221,8 @@ export const helpContent: HelpContent = {
     "doc-log [--modelId <model>] [message]",
     "doc-log --init [message]",
     "doc-log --update [message]",
+    "doc-log flow <name> [message]",
+    "doc-log section <area> [message]",
   ],
   commands: [
     {
@@ -198,6 +238,14 @@ export const helpContent: HelpContent = {
     {
       label: "--update",
       description: "Update existing OpenWiki documentation.",
+    },
+    {
+      label: "flow <name>",
+      description: "Write a deep-dive, SDK-blueprint page for one flow.",
+    },
+    {
+      label: "section <area>",
+      description: "Build a full domain section: overview, flows, references.",
     },
     {
       label: "-p, --print",
@@ -222,6 +270,8 @@ export const helpContent: HelpContent = {
     "doc-log",
     "doc-log --init",
     "doc-log --update",
+    "doc-log flow access-control",
+    'doc-log section gallery-experience "focus on the image grid and selection"',
     'doc-log "What can you do?"',
     'doc-log -p "Summarize what Doc-Log can do"',
     "doc-log --modelId composer-2.5",
