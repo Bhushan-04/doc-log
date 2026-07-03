@@ -7,14 +7,14 @@ import {
   getProviderModelOptions,
   isValidModelId,
   normalizeModelId,
-  OPENWIKI_MODEL_ID_ENV_KEY,
-  type OpenWikiProvider,
+  DOC_LOG_MODEL_ID_ENV_KEY,
+  type DocLogProvider,
 } from "./constants.js";
-import { openWikiEnvPath, saveOpenWikiEnv } from "./env.js";
+import { docLogEnvPath, saveDocLogEnv } from "./env.js";
 
 export type InitSetupResult = {
   modelId: string | null;
-  provider: OpenWikiProvider | null;
+  provider: DocLogProvider | null;
   savedApiKey: boolean;
   savedModelId: boolean;
 };
@@ -33,7 +33,7 @@ export function needsCredentialSetup(
   return (
     !process.env[CURSOR_API_KEY_ENV_KEY] ||
     (modelIdOverride === null &&
-      process.env[OPENWIKI_MODEL_ID_ENV_KEY] === undefined)
+      process.env[DOC_LOG_MODEL_ID_ENV_KEY] === undefined)
   );
 }
 
@@ -48,7 +48,7 @@ export function InitSetup({
   const [modelSelectionIndex, setModelSelectionIndex] = useState(() =>
     getModelSelectionIndex(
       modelIdOverride ??
-        process.env[OPENWIKI_MODEL_ID_ENV_KEY] ??
+        process.env[DOC_LOG_MODEL_ID_ENV_KEY] ??
         getDefaultModelId(DEFAULT_PROVIDER),
     ),
   );
@@ -62,7 +62,7 @@ export function InitSetup({
     if (initialStep === null) {
       onComplete({
         modelId:
-          modelIdOverride ?? process.env[OPENWIKI_MODEL_ID_ENV_KEY] ?? null,
+          modelIdOverride ?? process.env[DOC_LOG_MODEL_ID_ENV_KEY] ?? null,
         provider: DEFAULT_PROVIDER,
         savedApiKey: false,
         savedModelId: false,
@@ -131,7 +131,7 @@ export function InitSetup({
 
       if (
         modelIdOverride === null &&
-        process.env[OPENWIKI_MODEL_ID_ENV_KEY] === undefined
+        process.env[DOC_LOG_MODEL_ID_ENV_KEY] === undefined
       ) {
         setStep("model");
         return;
@@ -191,18 +191,18 @@ export function InitSetup({
       }
 
       if (nextModelId !== null) {
-        updates[OPENWIKI_MODEL_ID_ENV_KEY] = nextModelId;
+        updates[DOC_LOG_MODEL_ID_ENV_KEY] = nextModelId;
       }
 
       if (Object.keys(updates).length > 0) {
-        await saveOpenWikiEnv(updates);
+        await saveDocLogEnv(updates);
       }
 
       onComplete({
         modelId:
           nextModelId ??
           modelIdOverride ??
-          process.env[OPENWIKI_MODEL_ID_ENV_KEY] ??
+          process.env[DOC_LOG_MODEL_ID_ENV_KEY] ??
           null,
         provider: DEFAULT_PROVIDER,
         savedApiKey: nextApiKey !== null,
@@ -236,13 +236,13 @@ export function InitSetup({
           detail={
             process.env[CURSOR_API_KEY_ENV_KEY]
               ? "available from environment"
-              : `save ${CURSOR_API_KEY_ENV_KEY} to ${openWikiEnvPath}`
+              : `save ${CURSOR_API_KEY_ENV_KEY} to ${docLogEnvPath}`
           }
         />
         <SetupStep
           label="Model"
           state={
-            modelIdOverride || process.env[OPENWIKI_MODEL_ID_ENV_KEY]
+            modelIdOverride || process.env[DOC_LOG_MODEL_ID_ENV_KEY]
               ? "done"
               : step === "model"
                 ? "current"
@@ -385,7 +385,7 @@ function Prompt({
         <Box flexDirection="column">
           <Text>Paste a custom Cursor model ID.</Text>
           <Text>
-            <Text color="gray">$</Text> {OPENWIKI_MODEL_ID_ENV_KEY}={" "}
+            <Text color="gray">$</Text> {DOC_LOG_MODEL_ID_ENV_KEY}={" "}
             <Text color="yellow">{input}</Text>
           </Text>
           <Text color="gray">Press Enter to save it.</Text>
@@ -437,7 +437,7 @@ function getInitialStep(modelIdOverride: string | null): PromptStep | null {
 
   if (
     modelIdOverride === null &&
-    process.env[OPENWIKI_MODEL_ID_ENV_KEY] === undefined
+    process.env[DOC_LOG_MODEL_ID_ENV_KEY] === undefined
   ) {
     return "model";
   }
@@ -450,8 +450,8 @@ function getModelSetupDetail(modelIdOverride: string | null): string {
     return `using ${modelIdOverride} for this run`;
   }
 
-  if (process.env[OPENWIKI_MODEL_ID_ENV_KEY]) {
-    return process.env[OPENWIKI_MODEL_ID_ENV_KEY] ?? "";
+  if (process.env[DOC_LOG_MODEL_ID_ENV_KEY]) {
+    return process.env[DOC_LOG_MODEL_ID_ENV_KEY] ?? "";
   }
 
   return `default ${getDefaultModelId(DEFAULT_PROVIDER)}`;

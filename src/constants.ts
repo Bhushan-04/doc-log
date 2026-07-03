@@ -1,13 +1,13 @@
-export const OPEN_WIKI_DIR = "openwiki";
-export const UPDATE_METADATA_PATH = `${OPEN_WIKI_DIR}/.last-update.json`;
+export const DOC_LOG_DIR = "doc-log";
+export const UPDATE_METADATA_PATH = `${DOC_LOG_DIR}/.last-update.json`;
 export const CURSOR_API_KEY_ENV_KEY = "CURSOR_API_KEY";
-export const OPENWIKI_PROVIDER_ENV_KEY = "DOC_LOG_PROVIDER";
-export const OPENWIKI_MODEL_ID_ENV_KEY = "DOC_LOG_MODEL_ID";
+export const DOC_LOG_PROVIDER_ENV_KEY = "DOC_LOG_PROVIDER";
+export const DOC_LOG_MODEL_ID_ENV_KEY = "DOC_LOG_MODEL_ID";
 export const DEFAULT_PROVIDER = "cursor";
 
-export type OpenWikiProvider = "cursor";
+export type DocLogProvider = "cursor";
 
-export type SelectableOpenWikiProvider = OpenWikiProvider;
+export type SelectableDocLogProvider = DocLogProvider;
 
 export type ProviderModelOption = {
   id: string;
@@ -20,11 +20,11 @@ type ProviderConfig = {
   modelOptions: ProviderModelOption[];
 };
 
-export const SELECTABLE_OPENWIKI_PROVIDERS = [
+export const SELECTABLE_DOC_LOG_PROVIDERS = [
   "cursor",
-] as const satisfies readonly SelectableOpenWikiProvider[];
+] as const satisfies readonly SelectableDocLogProvider[];
 
-export const PROVIDER_CONFIGS: Record<OpenWikiProvider, ProviderConfig> = {
+export const PROVIDER_CONFIGS: Record<DocLogProvider, ProviderConfig> = {
   cursor: {
     apiKeyEnvKey: CURSOR_API_KEY_ENV_KEY,
     label: "Cursor",
@@ -38,31 +38,31 @@ export const PROVIDER_CONFIGS: Record<OpenWikiProvider, ProviderConfig> = {
 export const DEFAULT_MODEL_ID =
   PROVIDER_CONFIGS[DEFAULT_PROVIDER].modelOptions[0]?.id ?? "composer-2.5";
 
-export function getProviderConfig(provider: OpenWikiProvider): ProviderConfig {
+export function getProviderConfig(provider: DocLogProvider): ProviderConfig {
   return PROVIDER_CONFIGS[provider];
 }
 
-export function getProviderLabel(provider: OpenWikiProvider): string {
+export function getProviderLabel(provider: DocLogProvider): string {
   return getProviderConfig(provider).label;
 }
 
-export function getProviderApiKeyEnvKey(provider: OpenWikiProvider): string {
+export function getProviderApiKeyEnvKey(provider: DocLogProvider): string {
   return getProviderConfig(provider).apiKeyEnvKey;
 }
 
 export function getProviderModelOptions(
-  provider: OpenWikiProvider,
+  provider: DocLogProvider,
 ): ProviderModelOption[] {
   return getProviderConfig(provider).modelOptions;
 }
 
-export function getDefaultModelId(provider: OpenWikiProvider): string {
+export function getDefaultModelId(provider: DocLogProvider): string {
   return getProviderModelOptions(provider)[0]?.id ?? DEFAULT_MODEL_ID;
 }
 
 export function normalizeProvider(
   value: string | null | undefined,
-): OpenWikiProvider | null {
+): DocLogProvider | null {
   if (value === undefined || value === null) {
     return null;
   }
@@ -72,14 +72,14 @@ export function normalizeProvider(
   return isValidProvider(provider) ? provider : null;
 }
 
-export function isValidProvider(value: string): value is OpenWikiProvider {
+export function isValidProvider(value: string): value is DocLogProvider {
   return value in PROVIDER_CONFIGS;
 }
 
 export function resolveConfiguredProvider(
   env: NodeJS.ProcessEnv = process.env,
-): OpenWikiProvider {
-  return normalizeProvider(env[OPENWIKI_PROVIDER_ENV_KEY]) ?? DEFAULT_PROVIDER;
+): DocLogProvider {
+  return normalizeProvider(env[DOC_LOG_PROVIDER_ENV_KEY]) ?? DEFAULT_PROVIDER;
 }
 
 export function normalizeModelId(value: string): string {
@@ -117,4 +117,4 @@ export function isValidTarget(value: string): boolean {
   );
 }
 
-export const OPENWIKI_VERSION = "0.1.0";
+export const DOC_LOG_VERSION = "0.1.0";

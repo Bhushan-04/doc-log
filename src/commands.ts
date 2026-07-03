@@ -4,7 +4,7 @@ import {
   normalizeModelId,
   normalizeTarget,
 } from "./constants.js";
-import type { OpenWikiCommand } from "./agent/types.js";
+import type { DocLogCommand } from "./agent/types.js";
 
 export type HelpRow = {
   label: string;
@@ -28,7 +28,7 @@ export type CliCommand =
   | {
       kind: "run";
       exitCode: 0;
-      command: OpenWikiCommand;
+      command: DocLogCommand;
       dryRun: boolean;
       modelId: string | null;
       print: boolean;
@@ -50,7 +50,7 @@ export function parseCommand(argv: string[]): CliCommand {
   let dryRun = false;
   let modelId: string | null = null;
   let print = false;
-  let command: OpenWikiCommand = "chat";
+  let command: DocLogCommand = "chat";
   let target: string | null = null;
   const userMessageParts: string[] = [];
 
@@ -236,11 +236,11 @@ export const helpContent: HelpContent = {
   options: [
     {
       label: "--init",
-      description: "Generate initial OpenWiki documentation.",
+      description: "Generate initial Doc-Log documentation.",
     },
     {
       label: "--update",
-      description: "Update existing OpenWiki documentation.",
+      description: "Update existing Doc-Log documentation.",
     },
     {
       label: "flow <name>",

@@ -1,8 +1,14 @@
 {
-  "name": "doc-log",
+  "name": "doc-log-cli",
   "version": "0.1.0",
-  "description": "A CLI that uses the Cursor agent (via CURSOR_API_KEY) to generate and maintain OpenWiki-style documentation for a codebase.",
+  "description": "A CLI that uses the Cursor agent (via CURSOR_API_KEY) to generate and maintain Doc-Log documentation for a codebase.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bhushan-04/doc-log.git"
+  },
+  "homepage": "https://github.com/Bhushan-04/doc-log#readme",
+  "bugs": "https://github.com/Bhushan-04/doc-log/issues",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -34,6 +40,7 @@
     "lint:check": "eslint .",
     "prebuild": "pnpm run clean",
     "prepack": "pnpm run build",
+    "prepublishOnly": "pnpm run lint:check && pnpm run format:check",
     "start": "node dist/cli.js"
   },
   "dependencies": {
