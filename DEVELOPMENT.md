@@ -60,7 +60,7 @@ The existing global link will keep using the rebuilt `dist/cli.js`.
 
 Real runs can write:
 
-- `openwiki/` in the target repo
+- `doc-log/` in the target repo
 - `~/.doc-log/.env` for the Cursor API key and default model
 - `~/.doc-log/threads.json` for chat-session → Cursor-agent mapping
 

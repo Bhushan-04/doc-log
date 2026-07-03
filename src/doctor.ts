@@ -4,18 +4,18 @@ import { Cursor } from "@cursor/sdk";
 import {
   CURSOR_API_KEY_ENV_KEY,
   DEFAULT_MODEL_ID,
-  OPENWIKI_MODEL_ID_ENV_KEY,
+  DOC_LOG_MODEL_ID_ENV_KEY,
 } from "./constants.js";
 import {
   getCredentialDiagnostics,
-  loadOpenWikiEnv,
-  openWikiEnvPath,
+  loadDocLogEnv,
+  docLogEnvPath,
 } from "./env.js";
 
 const execFileAsync = promisify(execFile);
 
 export async function runDoctor(): Promise<number> {
-  await loadOpenWikiEnv();
+  await loadDocLogEnv();
 
   const write = (line = "") => process.stdout.write(`${line}\n`);
 
@@ -23,7 +23,7 @@ export async function runDoctor(): Promise<number> {
   write();
   write(`node       ${process.version} (${process.platform} ${process.arch})`);
   write(`cwd        ${process.cwd()}`);
-  write(`env file   ${openWikiEnvPath}`);
+  write(`env file   ${docLogEnvPath}`);
   write(`git        ${await getGitVersion()}`);
   write(`git repo   ${await isInsideGitRepo()}`);
   write();
@@ -56,7 +56,7 @@ export async function runDoctor(): Promise<number> {
   }
 
   const configuredModelId =
-    process.env[OPENWIKI_MODEL_ID_ENV_KEY] ?? DEFAULT_MODEL_ID;
+    process.env[DOC_LOG_MODEL_ID_ENV_KEY] ?? DEFAULT_MODEL_ID;
 
   try {
     const user = await Cursor.me({ apiKey });

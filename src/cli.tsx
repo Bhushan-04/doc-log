@@ -17,15 +17,12 @@ import {
 } from "./credentials.js";
 import {
   getCredentialDiagnostics,
-  loadOpenWikiEnv,
-  saveOpenWikiEnv,
+  loadDocLogEnv,
+  saveDocLogEnv,
   type CredentialDiagnostic,
 } from "./env.js";
-import { createOpenWikiThreadId, runOpenWikiAgent } from "./agent/index.js";
-import {
-  type OpenWikiRunEvent,
-  type OpenWikiRunResult,
-} from "./agent/types.js";
+import { createDocLogThreadId, runDocLogAgent } from "./agent/index.js";
+import { type DocLogRunEvent, type DocLogRunResult } from "./agent/types.js";
 import {
   CURSOR_API_KEY_ENV_KEY,
   getDefaultModelId,
@@ -37,30 +34,30 @@ import {
   normalizeModelId,
   normalizeProvider,
   normalizeTarget,
-  OPENWIKI_PROVIDER_ENV_KEY,
-  OPENWIKI_MODEL_ID_ENV_KEY,
-  OPEN_WIKI_DIR,
+  DOC_LOG_PROVIDER_ENV_KEY,
+  DOC_LOG_MODEL_ID_ENV_KEY,
+  DOC_LOG_DIR,
   resolveConfiguredProvider,
-  SELECTABLE_OPENWIKI_PROVIDERS,
-  OPENWIKI_VERSION,
-  type OpenWikiProvider,
+  SELECTABLE_DOC_LOG_PROVIDERS,
+  DOC_LOG_VERSION,
+  type DocLogProvider,
 } from "./constants.js";
 import { runDoctor } from "./doctor.js";
-import type { OpenWikiCommand } from "./agent/types.js";
+import type { DocLogCommand } from "./agent/types.js";
 
 type RunState =
   | { status: "idle" }
   | { status: "init-setup-saved"; result: InitSetupResult }
   | {
       status: "running";
-      command: OpenWikiCommand;
+      command: DocLogCommand;
       log: RunLogItem[];
       target?: string | null;
       credentialDiagnostics?: CredentialDiagnostic[];
     }
   | {
       status: "success";
-      result: OpenWikiRunResult;
+      result: DocLogRunResult;
       log: RunLogItem[];
       credentialDiagnostics?: CredentialDiagnostic[];
     }
@@ -88,11 +85,11 @@ type RunLogItem = {
 
 type CompletedRun = {
   id: number;
-  command: OpenWikiCommand;
+  command: DocLogCommand;
   credentialDiagnostics?: CredentialDiagnostic[];
   log: RunLogItem[];
   message: string | null;
-  result: OpenWikiRunResult;
+  result: DocLogRunResult;
 };
 
 type ErrorDiagnostic = {
@@ -103,7 +100,7 @@ type ErrorDiagnostic = {
 type AppCommand = Exclude<CliCommand, { kind: "doctor" }>;
 
 type CommandRunCommand = Extract<
-  OpenWikiCommand,
+  DocLogCommand,
   "init" | "update" | "flow" | "section"
 >;
 
@@ -111,7 +108,7 @@ type AppProps = {
   command: AppCommand;
 };
 
-const OPENWIKI_LOGO_LINES = [
+const DOC_LOG_LOGO_LINES = [
   " ____             _                ",
   "|  _ \\  ___   ___| |    ___   __ _ ",
   "| | | |/ _ \\ / __| |   / _ \\ / _` |",
@@ -119,8 +116,8 @@ const OPENWIKI_LOGO_LINES = [
   "|____/ \\___/ \\___|_____\\___/ \\__, |",
   "                             |___/ ",
 ];
-const OPENWIKI_LOGO_WIDTH = Math.max(
-  ...OPENWIKI_LOGO_LINES.map((line) => line.length),
+const DOC_LOG_LOGO_WIDTH = Math.max(
+  ...DOC_LOG_LOGO_LINES.map((line) => line.length),
 );
 
 function App({ command }: AppProps) {
@@ -129,12 +126,12 @@ function App({ command }: AppProps) {
   const startupProvider = resolveConfiguredProvider();
   const autoExitOnSuccess = shouldAutoExitStartupRun(command);
   const [sessionProvider, setSessionProvider] =
-    useState<OpenWikiProvider>(startupProvider);
+    useState<DocLogProvider>(startupProvider);
   const [sessionModelId, setSessionModelId] = useState<string | null>(
     startupModelId,
   );
   const activeRunId = useRef(0);
-  const sessionThreadId = useRef(createOpenWikiThreadId(process.cwd()));
+  const sessionThreadId = useRef(createDocLogThreadId(process.cwd()));
   const mountedRef = useRef(false);
   const nextLogId = useRef(1);
   const nextCompletedRunId = useRef(1);
@@ -153,10 +150,9 @@ function App({ command }: AppProps) {
   const [activeTarget, setActiveTarget] = useState<string | null>(
     command.kind === "run" ? command.target : null,
   );
-  const [resolvedCommand, setResolvedCommand] =
-    useState<OpenWikiCommand | null>(
-      command.kind === "run" && command.shouldStart ? command.command : null,
-    );
+  const [resolvedCommand, setResolvedCommand] = useState<DocLogCommand | null>(
+    command.kind === "run" && command.shouldStart ? command.command : null,
+  );
   const shouldRunInteractiveCredentialSetup =
     command.kind === "run" &&
     resolvedCommand !== null &&
@@ -194,7 +190,7 @@ function App({ command }: AppProps) {
 
   function clearSession() {
     activeRunId.current += 1;
-    sessionThreadId.current = createOpenWikiThreadId(process.cwd());
+    sessionThreadId.current = createDocLogThreadId(process.cwd());
     activeRunCredentialDiagnostics.current = undefined;
     activeRunLog.current = [];
     nextLogId.current = 1;
@@ -208,18 +204,18 @@ function App({ command }: AppProps) {
   }
 
   async function selectModel(modelId: string) {
-    await saveOpenWikiEnv({
-      [OPENWIKI_MODEL_ID_ENV_KEY]: modelId,
+    await saveDocLogEnv({
+      [DOC_LOG_MODEL_ID_ENV_KEY]: modelId,
     });
     setSessionModelId(modelId);
   }
 
-  async function selectProvider(provider: OpenWikiProvider) {
+  async function selectProvider(provider: DocLogProvider) {
     const modelId = getDefaultModelId(provider);
 
-    await saveOpenWikiEnv({
-      [OPENWIKI_PROVIDER_ENV_KEY]: provider,
-      [OPENWIKI_MODEL_ID_ENV_KEY]: modelId,
+    await saveDocLogEnv({
+      [DOC_LOG_PROVIDER_ENV_KEY]: provider,
+      [DOC_LOG_MODEL_ID_ENV_KEY]: modelId,
     });
     setSessionProvider(provider);
     setSessionModelId(modelId);
@@ -307,7 +303,7 @@ function App({ command }: AppProps) {
         });
     }
 
-    runOpenWikiAgent(resolvedCommand, process.cwd(), {
+    runDocLogAgent(resolvedCommand, process.cwd(), {
       debug: isDebugMode(),
       isFollowup: activeMessageIsFollowup,
       modelId: sessionModelId,
@@ -624,7 +620,7 @@ function DryRunView({
   target,
   userMessage,
 }: {
-  command: OpenWikiCommand;
+  command: DocLogCommand;
   modelId: string | null;
   shouldStart: boolean;
   target: string | null;
@@ -658,7 +654,7 @@ function DryRunView({
         />
         <StatusLine tone="muted" label="Agent" value="not invoked" />
         <StatusLine tone="muted" label="Writes" value="no files or metadata" />
-        <StatusLine tone="muted" label="Output" value={`${OPEN_WIKI_DIR}/`} />
+        <StatusLine tone="muted" label="Output" value={`${DOC_LOG_DIR}/`} />
         <StatusLine
           tone="muted"
           label="Startup"
@@ -735,7 +731,7 @@ function Header({
   const terminalColumns = process.stdout.columns ?? 80;
   const displayModelId = sanitizeHeaderValue(
     modelId ??
-      process.env[OPENWIKI_MODEL_ID_ENV_KEY] ??
+      process.env[DOC_LOG_MODEL_ID_ENV_KEY] ??
       getDefaultModelId(resolveConfiguredProvider()),
     Math.max(8, terminalColumns - 12),
   );
@@ -744,15 +740,14 @@ function Header({
     formatCwd(process.cwd()),
     Math.max(8, terminalColumns - 17),
   );
-  const shouldShowLogo = showLogo && terminalColumns > OPENWIKI_LOGO_WIDTH;
+  const shouldShowLogo = showLogo && terminalColumns > DOC_LOG_LOGO_WIDTH;
 
   if (compact) {
     return (
       <Box flexDirection="column" marginBottom={1}>
         <Text wrap="truncate">
           <Text color="cyan">{">_ "}</Text>
-          <Text bold>Doc-Log</Text>{" "}
-          <Text color="gray">v{OPENWIKI_VERSION}</Text>{" "}
+          <Text bold>Doc-Log</Text> <Text color="gray">v{DOC_LOG_VERSION}</Text>{" "}
           <Text color="gray">provider: </Text>
           <Text color="white">{displayProvider}</Text>{" "}
           <Text color="gray">model: </Text>
@@ -769,7 +764,7 @@ function Header({
     <Box flexDirection="column" marginBottom={1}>
       {shouldShowLogo ? (
         <Box flexDirection="column" marginBottom={1}>
-          {OPENWIKI_LOGO_LINES.map((line) => (
+          {DOC_LOG_LOGO_LINES.map((line) => (
             <Text bold color="cyan" key={line} wrap="truncate">
               {line}
             </Text>
@@ -785,8 +780,7 @@ function Header({
       >
         <Text>
           <Text color="cyan">{">_ "}</Text>
-          <Text bold>Doc-Log</Text>{" "}
-          <Text color="gray">v{OPENWIKI_VERSION}</Text>{" "}
+          <Text bold>Doc-Log</Text> <Text color="gray">v{DOC_LOG_VERSION}</Text>{" "}
           <Text color="gray">agent docs for codebases</Text>
         </Text>
         <Text>
@@ -840,7 +834,7 @@ function StatusLine({ tone, label, value }: StatusLineProps) {
 }
 
 type RunViewProps = {
-  command: OpenWikiCommand;
+  command: DocLogCommand;
   credentialDiagnostics?: CredentialDiagnostic[];
   log: RunLogItem[];
   done?: boolean;
@@ -1244,7 +1238,7 @@ function ChatHistory({ runs }: { runs: CompletedRun[] }) {
 
 type ChatInputProps = {
   currentModelId: string;
-  currentProvider: OpenWikiProvider;
+  currentProvider: DocLogProvider;
   onClear: () => void;
   onCommandRun: (
     command: CommandRunCommand,
@@ -1252,7 +1246,7 @@ type ChatInputProps = {
     target?: string | null,
   ) => void;
   onModelSelect: (modelId: string) => Promise<void>;
-  onProviderSelect: (provider: OpenWikiProvider) => Promise<void>;
+  onProviderSelect: (provider: DocLogProvider) => Promise<void>;
   onSubmit: (message: string) => void;
 };
 
@@ -1553,7 +1547,7 @@ function ChatInput({
   }
 
   async function selectProviderMenuOption(selectedIndex: number) {
-    const provider = SELECTABLE_OPENWIKI_PROVIDERS[selectedIndex];
+    const provider = SELECTABLE_DOC_LOG_PROVIDERS[selectedIndex];
 
     if (!provider) {
       setError("Select a provider.");
@@ -1701,12 +1695,12 @@ const slashCommandOptions: SlashCommandOption[] = [
     label: "/model",
   },
   {
-    description: "Run an initial OpenWiki documentation pass",
+    description: "Run an initial Doc-Log documentation pass",
     id: "init",
     label: "/init",
   },
   {
-    description: "Update existing OpenWiki documentation",
+    description: "Update existing Doc-Log documentation",
     id: "update",
     label: "/update",
   },
@@ -1744,7 +1738,7 @@ function SlashMenu({
   menuState,
 }: {
   currentModelId: string;
-  currentProvider: OpenWikiProvider;
+  currentProvider: DocLogProvider;
   input: string;
   menuState: Exclude<ChatInputMenuState, { kind: "none" }>;
 }) {
@@ -1781,7 +1775,7 @@ function SlashMenu({
     return (
       <Box flexDirection="column" marginTop={1}>
         <Text color="gray">Providers</Text>
-        {SELECTABLE_OPENWIKI_PROVIDERS.map((provider, index) => (
+        {SELECTABLE_DOC_LOG_PROVIDERS.map((provider, index) => (
           <MenuRow
             description={
               provider === currentProvider
@@ -1954,7 +1948,7 @@ function syncMenuStateForInput(
   input: string,
   currentState: ChatInputMenuState,
   currentModelId: string,
-  currentProvider: OpenWikiProvider,
+  currentProvider: DocLogProvider,
 ): ChatInputMenuState {
   if (input.startsWith("/provider")) {
     const selectedIndex =
@@ -1966,7 +1960,7 @@ function syncMenuStateForInput(
       kind: "provider",
       selectedIndex: clampMenuIndex(
         selectedIndex,
-        SELECTABLE_OPENWIKI_PROVIDERS.length,
+        SELECTABLE_DOC_LOG_PROVIDERS.length,
       ),
     };
   }
@@ -2005,7 +1999,7 @@ function moveMenuSelection(
   menuState: ChatInputMenuState,
   offset: number,
   currentModelId: string,
-  currentProvider: OpenWikiProvider,
+  currentProvider: DocLogProvider,
 ): ChatInputMenuState {
   if (menuState.kind === "none") {
     return menuState;
@@ -2015,7 +2009,7 @@ function moveMenuSelection(
     menuState.kind === "model"
       ? getModelMenuOptions(currentModelId, currentProvider).length
       : menuState.kind === "provider"
-        ? SELECTABLE_OPENWIKI_PROVIDERS.length
+        ? SELECTABLE_DOC_LOG_PROVIDERS.length
         : slashCommandOptions.length;
 
   return {
@@ -2034,7 +2028,7 @@ function getCommandOptionIndex(input: string): number {
 
 function getCurrentModelOptionIndex(
   currentModelId: string,
-  currentProvider: OpenWikiProvider,
+  currentProvider: DocLogProvider,
 ): number {
   const matchingIndex = getModelMenuOptions(
     currentModelId,
@@ -2047,9 +2041,9 @@ function getCurrentModelOptionIndex(
 }
 
 function getCurrentProviderOptionIndex(
-  currentProvider: OpenWikiProvider,
+  currentProvider: DocLogProvider,
 ): number {
-  const matchingIndex = SELECTABLE_OPENWIKI_PROVIDERS.findIndex(
+  const matchingIndex = SELECTABLE_DOC_LOG_PROVIDERS.findIndex(
     (provider) => provider === currentProvider,
   );
 
@@ -2058,7 +2052,7 @@ function getCurrentProviderOptionIndex(
 
 function getModelMenuOptions(
   currentModelId: string,
-  currentProvider: OpenWikiProvider,
+  currentProvider: DocLogProvider,
 ): ModelMenuOption[] {
   const modelIds = Array.from(
     new Set(
@@ -2160,7 +2154,7 @@ function updateRunningCredentialDiagnostics(
 
 function appendRunLogEvent(
   log: RunLogItem[],
-  event: OpenWikiRunEvent,
+  event: DocLogRunEvent,
   nextLogId: React.MutableRefObject<number>,
 ): RunLogItem[] {
   if (event.type === "text" && event.source === "subgraph") {
@@ -2202,7 +2196,7 @@ function appendRunLogEvent(
 
 function appendToolStartLogItem(
   log: RunLogItem[],
-  event: Extract<OpenWikiRunEvent, { type: "tool_start" }>,
+  event: Extract<DocLogRunEvent, { type: "tool_start" }>,
   nextLogId: React.MutableRefObject<number>,
 ): RunLogItem[] {
   const toolDisplay = createToolDisplay(event);
@@ -2256,7 +2250,7 @@ function appendToolStartLogItem(
 
 function completeToolLogItem(
   log: RunLogItem[],
-  event: Extract<OpenWikiRunEvent, { type: "tool_end" }>,
+  event: Extract<DocLogRunEvent, { type: "tool_end" }>,
 ): RunLogItem[] {
   const matchingIndex = findLastToolLogItemIndex(log, event.id);
 
@@ -2271,7 +2265,7 @@ function completeToolLogItem(
 
 function completeToolGroupItem(
   item: RunLogItem,
-  event: Extract<OpenWikiRunEvent, { type: "tool_end" }>,
+  event: Extract<DocLogRunEvent, { type: "tool_end" }>,
 ): RunLogItem {
   const actionCount = item.actionCount ?? 1;
   const activeToolCallIds = getActiveToolCallIds(item).filter(
@@ -2385,7 +2379,7 @@ type ToolDisplay = {
 };
 
 function createToolDisplay(
-  event: Extract<OpenWikiRunEvent, { type: "tool_start" }>,
+  event: Extract<DocLogRunEvent, { type: "tool_start" }>,
 ): ToolDisplay {
   const input = parseToolInput(event.input);
   const variantIndex = pickVariantIndex(
@@ -2711,10 +2705,7 @@ function truncateToDisplayLines(
   return lines.join("\n");
 }
 
-function formatRunLabel(
-  command: OpenWikiCommand,
-  target: string | null,
-): string {
+function formatRunLabel(command: DocLogCommand, target: string | null): string {
   return target ? `doc-log ${command} ${target}` : `doc-log ${command}`;
 }
 
@@ -2739,7 +2730,7 @@ function shouldShowCredentialDiagnostics(): boolean {
 function getDisplayModelId(modelId: string | null): string {
   return (
     modelId ??
-    process.env[OPENWIKI_MODEL_ID_ENV_KEY] ??
+    process.env[DOC_LOG_MODEL_ID_ENV_KEY] ??
     getDefaultModelId(resolveConfiguredProvider())
   );
 }
@@ -3000,7 +2991,7 @@ if (parsedCommand.kind === "doctor") {
   process.exitCode = await runDoctor();
 } else {
   if (parsedCommand.kind === "run" && !parsedCommand.dryRun) {
-    await loadOpenWikiEnv();
+    await loadDocLogEnv();
   }
 
   const command = resolveStartupCommand(parsedCommand);
@@ -3048,11 +3039,11 @@ async function runPrintCommand(
   try {
     const output: string[] = [];
 
-    await runOpenWikiAgent(command.command, process.cwd(), {
+    await runDocLogAgent(command.command, process.cwd(), {
       debug: isDebugMode(),
       isFollowup: command.command === "chat",
       modelId: command.modelId,
-      threadId: createOpenWikiThreadId(process.cwd()),
+      threadId: createDocLogThreadId(process.cwd()),
       userMessage: command.userMessage,
       onEvent: (event) => {
         if (event.type === "text" && event.source !== "subgraph") {
