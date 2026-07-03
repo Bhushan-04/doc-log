@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Doc-Log is a Node.js CLI with a React/Ink terminal UI that orchestrates a Cursor SDK agent. The agent inspects the **target repository** (the process `cwd`) and writes Markdown to `openwiki/`. This page describes how the pieces connect inside the Doc-Log package itself.
+Doc-Log is a Node.js CLI with a React/Ink terminal UI that orchestrates a Cursor SDK agent. The agent inspects the **target repository** (the process `cwd`) and writes Markdown to `doc-log/`. This page describes how the pieces connect inside the Doc-Log package itself.
 
 ## End-to-end flow
 
@@ -10,16 +10,16 @@ flowchart TD
   Parse --> UI[cli.tsx Ink App]
   UI --> Creds{credentials needed?}
   Creds -->|yes| Setup[credentials.tsx InitSetup]
-  Creds -->|no| Agent[runOpenWikiAgent in agent/index.ts]
+  Creds -->|no| Agent[runDocLogAgent in agent/index.ts]
   Setup --> Agent
   Agent --> Context[createRunContext in agent/utils.ts]
   Context --> Git[git status / log / diff]
   Agent --> SDK[Cursor SDK Agent.create or resume]
   SDK --> Prompt[system + user prompt from prompt.ts]
   SDK --> Stream[run.stream → UI events]
-  SDK --> Snapshot{openwiki content changed?}
+  SDK --> Snapshot{doc-log content changed?}
   Snapshot -->|init/update yes| Meta[writeLastUpdateMetadata]
-  Snapshot -->|chat or unchanged| Done[OpenWikiRunResult]
+  Snapshot -->|chat or unchanged| Done[DocLogRunResult]
   Meta --> Done
 ```
 
@@ -33,7 +33,7 @@ The CLI entry point:
 
 1. Parses argv with `parseCommand`.
 2. For `--doctor`, runs `runDoctor()` and exits.
-3. For normal runs (not `--dry-run`), calls `loadOpenWikiEnv()` before UI startup.
+3. For normal runs (not `--dry-run`), calls `loadDocLogEnv()` before UI startup.
 4. Applies `resolveStartupCommand` — enforces API key for non-interactive/print runs.
 5. Routes to `runPrintCommand` (stdout-only), Ink `<App>`, or startup error.
 
@@ -50,7 +50,7 @@ The CLI entry point:
 | `run`    | default              | Interactive or one-shot agent run |
 | `error`  | invalid flags        | Exit code 1 with message          |
 
-Run commands resolve to an `OpenWikiCommand`: `"chat"` (default), `"init"`, or `"update"`. Flags:
+Run commands resolve to a `DocLogCommand`: `"chat"` (default), `"init"`, or `"update"`. Flags:
 
 - `--print` / `-p` — non-interactive; print final assistant text and exit
 - `--modelId` — per-run model override (validated by `isValidModelId` in `constants.ts`)
@@ -63,8 +63,8 @@ Init and update cannot be combined.
 The main entry renders an Ink `App` that:
 
 1. Optionally runs **credential setup** (`InitSetup`) when `CURSOR_API_KEY` or default model is missing.
-2. Invokes `runOpenWikiAgent` with streaming events mapped to a run log (text, tool start/end, debug).
-3. Supports **follow-up chat** in the same session by reusing a stable `threadId` (`createOpenWikiThreadId(process.cwd())`).
+2. Invokes `runDocLogAgent` with streaming events mapped to a run log (text, tool start/end, debug).
+3. Supports **follow-up chat** in the same session by reusing a stable `threadId` (`createDocLogThreadId(process.cwd())`).
 4. Handles `--print` mode by auto-exiting after success.
 
 Development mode (`DOC_LOG_DEV=1`) exposes extra help sections and `--dry-run`.
@@ -95,16 +95,16 @@ Sets `process.env.CURSOR_RIPGREP_PATH` when found so agent tooling can search th
 
 ## Agent orchestration (`src/agent/index.ts`)
 
-`runOpenWikiAgent(command, cwd, options)` is the core runtime:
+`runDocLogAgent(command, cwd, options)` is the core runtime:
 
-1. **Load env** — `loadOpenWikiEnv()` merges `~/.doc-log/.env` into `process.env` (shell env wins).
+1. **Load env** — `loadDocLogEnv()` merges `~/.doc-log/.env` into `process.env` (shell env wins).
 2. **Validate API key** — requires `CURSOR_API_KEY`.
 3. **Build context** — `createRunContext` supplies git summary and prior `.last-update.json` for init/update.
-4. **Snapshot before run** — for init/update, hash `openwiki/` content (excluding `.last-update.json`) to detect real doc changes afterward.
+4. **Snapshot before run** — for init/update, hash `doc-log/` content (excluding `.last-update.json`) to detect real doc changes afterward.
 5. **Create or resume agent** — looks up `agentId` in `~/.doc-log/threads.json` by `threadId`; resumes via `Agent.resume` or creates with `Agent.create` scoped to `local.cwd`.
 6. **Send prompt** — concatenates system prompt, user prompt, and repository root note.
-7. **Stream** — maps SDK messages to `OpenWikiRunEvent` for the UI.
-8. **Write metadata** — if init/update and snapshot hash changed, writes `openwiki/.last-update.json`.
+7. **Stream** — maps SDK messages to `DocLogRunEvent` for the UI.
+8. **Write metadata** — if init/update and snapshot hash changed, writes `doc-log/.last-update.json`.
 
 Thread IDs are SHA256-based per resolved cwd plus a random suffix. Thread map keeps at most 50 entries.
 
@@ -122,11 +122,11 @@ The documentation agent receives a large **system prompt** embedded in the user 
 
 - **Run discipline** — work only in target repo, targeted discovery, no invented APIs
 - **Subagent discipline** — read-only parallel research; main agent writes docs
-- **Planning** — temporary `openwiki/_plan.md`, deleted before completion
+- **Planning** — temporary `doc-log/_plan.md`, deleted before completion
 - **Git discipline** — log/blame for init; diff since `gitHead` for update
 - **Documentation structure** — `quickstart.md` entrypoint, section dirs when warranted, max ~8 pages on init
 - **Mode behavior** — `chat` vs `init` vs `update` (surgical updates, soft diff budget)
-- **Security** — no reading `.env` secrets; only edit `openwiki/` and top-level agent instruction files
+- **Security** — no reading `.env` secrets; only edit `doc-log/` and top-level agent instruction files
 
 User prompts add git context from `createRunContext` and optional user message appendices.
 
@@ -148,7 +148,7 @@ Git failures are captured as command output rather than crashing the run (empty 
 
 ### Content change detection
 
-`createOpenWikiContentSnapshot` SHA256-hashes all files under `openwiki/` except `.last-update.json`. Metadata is written only when the hash differs after a successful init/update run — avoiding timestamp bumps when the agent made no doc edits.
+`createDocLogContentSnapshot` SHA256-hashes all files under `doc-log/` except `.last-update.json`. Metadata is written only when the hash differs after a successful init/update run — avoiding timestamp bumps when the agent made no doc edits.
 
 ### `.last-update.json` shape
 
@@ -167,14 +167,14 @@ Future `--update` runs prefer diffing from `gitHead` when present.
 
 ### Constants (`src/constants.ts`)
 
-| Symbol                      | Value / role                                    |
-| --------------------------- | ----------------------------------------------- |
-| `OPEN_WIKI_DIR`             | `"openwiki"`                                    |
-| `UPDATE_METADATA_PATH`      | `openwiki/.last-update.json`                    |
-| `CURSOR_API_KEY_ENV_KEY`    | `CURSOR_API_KEY`                                |
-| `OPENWIKI_MODEL_ID_ENV_KEY` | `DOC_LOG_MODEL_ID`                              |
-| `OPENWIKI_PROVIDER_ENV_KEY` | `DOC_LOG_PROVIDER`                              |
-| `DEFAULT_MODEL_ID`          | First entry in provider config (`composer-2.5`) |
+| Symbol                     | Value / role                                    |
+| -------------------------- | ----------------------------------------------- |
+| `DOC_LOG_DIR`              | `"doc-log"`                                     |
+| `UPDATE_METADATA_PATH`     | `doc-log/.last-update.json`                     |
+| `CURSOR_API_KEY_ENV_KEY`   | `CURSOR_API_KEY`                                |
+| `DOC_LOG_MODEL_ID_ENV_KEY` | `DOC_LOG_MODEL_ID`                              |
+| `DOC_LOG_PROVIDER_ENV_KEY` | `DOC_LOG_PROVIDER`                              |
+| `DEFAULT_MODEL_ID`         | First entry in provider config (`composer-2.5`) |
 
 `isValidModelId` allows alphanumeric IDs with `._:/+-` (max 120 chars).
 
@@ -186,7 +186,7 @@ Future `--update` runs prefer diffing from `gitHead` when present.
 
 ### First-run setup (`src/credentials.tsx`)
 
-`needsCredentialSetup()` triggers when API key is missing or default model unset. `InitSetup` walks through API key entry and model selection (preset list from `constants.ts` or custom ID), then `saveOpenWikiEnv`. Credential setup runs only when stdin is a TTY; non-interactive runs require `CURSOR_API_KEY` in the environment (`resolveStartupCommand` in `cli.tsx`).
+`needsCredentialSetup()` triggers when API key is missing or default model unset. `InitSetup` walks through API key entry and model selection (preset list from `constants.ts` or custom ID), then `saveDocLogEnv`. Credential setup runs only when stdin is a TTY; non-interactive runs require `CURSOR_API_KEY` in the environment (`resolveStartupCommand` in `cli.tsx`).
 
 ### Error redaction (`src/cli.tsx`)
 
@@ -217,7 +217,7 @@ Returns exit code 1 if API key missing or Cursor API check fails.
 There is no separate server or database. All persistent state is:
 
 - Per-user: `~/.doc-log/.env`, `~/.doc-log/threads.json`
-- Per-target-repo: `openwiki/`, optional `AGENTS.md` / `CLAUDE.md` edits
+- Per-target-repo: `doc-log/`, optional `AGENTS.md` / `CLAUDE.md` edits
 
 ## Extension points
 
@@ -231,6 +231,6 @@ There is no separate server or database. All persistent state is:
 
 ## Related reading
 
-- [OpenWiki quickstart](../quickstart.md) — install, usage, repo layout
+- [Doc-Log quickstart](../quickstart.md) — install, usage, repo layout
 - [README.md](../../README.md) — product summary
 - [DEVELOPMENT.md](../../DEVELOPMENT.md) — linking and dry-run workflow

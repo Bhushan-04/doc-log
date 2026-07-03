@@ -5,12 +5,12 @@ import {
   CURSOR_API_KEY_ENV_KEY,
   isValidModelId,
   normalizeProvider,
-  OPENWIKI_MODEL_ID_ENV_KEY,
-  OPENWIKI_PROVIDER_ENV_KEY,
+  DOC_LOG_MODEL_ID_ENV_KEY,
+  DOC_LOG_PROVIDER_ENV_KEY,
 } from "./constants.js";
 
-export const openWikiEnvDir = path.join(os.homedir(), ".doc-log");
-export const openWikiEnvPath = path.join(openWikiEnvDir, ".env");
+export const docLogEnvDir = path.join(os.homedir(), ".doc-log");
+export const docLogEnvPath = path.join(docLogEnvDir, ".env");
 
 type EnvMap = Record<string, string>;
 
@@ -28,12 +28,12 @@ export type CredentialDiagnostic = {
 
 const managedEnvKeys = [
   CURSOR_API_KEY_ENV_KEY,
-  OPENWIKI_PROVIDER_ENV_KEY,
-  OPENWIKI_MODEL_ID_ENV_KEY,
+  DOC_LOG_PROVIDER_ENV_KEY,
+  DOC_LOG_MODEL_ID_ENV_KEY,
 ];
 
-export async function loadOpenWikiEnv(): Promise<EnvMap> {
-  const env = await readOpenWikiEnv();
+export async function loadDocLogEnv(): Promise<EnvMap> {
+  const env = await readDocLogEnv();
 
   for (const [key, value] of Object.entries(env)) {
     if (process.env[key] === undefined) {
@@ -47,33 +47,33 @@ export async function loadOpenWikiEnv(): Promise<EnvMap> {
 export async function getCredentialDiagnostics(): Promise<
   CredentialDiagnostic[]
 > {
-  const fileEnv = await readOpenWikiEnv();
+  const fileEnv = await readDocLogEnv();
 
   return [
     createCredentialDiagnostic(CURSOR_API_KEY_ENV_KEY, fileEnv),
-    createCredentialDiagnostic(OPENWIKI_PROVIDER_ENV_KEY, fileEnv),
-    createCredentialDiagnostic(OPENWIKI_MODEL_ID_ENV_KEY, fileEnv),
+    createCredentialDiagnostic(DOC_LOG_PROVIDER_ENV_KEY, fileEnv),
+    createCredentialDiagnostic(DOC_LOG_MODEL_ID_ENV_KEY, fileEnv),
   ];
 }
 
-export async function saveOpenWikiEnv(updates: EnvMap): Promise<void> {
-  const currentEnv = await readOpenWikiEnv();
+export async function saveDocLogEnv(updates: EnvMap): Promise<void> {
+  const currentEnv = await readDocLogEnv();
   const nextEnv = {
     ...currentEnv,
     ...updates,
   };
 
-  await mkdir(openWikiEnvDir, {
+  await mkdir(docLogEnvDir, {
     recursive: true,
     mode: 0o700,
   });
-  await chmod(openWikiEnvDir, 0o700);
+  await chmod(docLogEnvDir, 0o700);
 
-  await writeFile(openWikiEnvPath, formatEnv(nextEnv), {
+  await writeFile(docLogEnvPath, formatEnv(nextEnv), {
     encoding: "utf8",
     mode: 0o600,
   });
-  await chmod(openWikiEnvPath, 0o600);
+  await chmod(docLogEnvPath, 0o600);
 
   for (const [key, value] of Object.entries(updates)) {
     process.env[key] = value;
@@ -104,13 +104,13 @@ function createCredentialDiagnostic(
     source,
     length: value.length,
     preview:
-      key === OPENWIKI_MODEL_ID_ENV_KEY || key === OPENWIKI_PROVIDER_ENV_KEY
+      key === DOC_LOG_MODEL_ID_ENV_KEY || key === DOC_LOG_PROVIDER_ENV_KEY
         ? JSON.stringify(value)
         : createCredentialPreview(value),
     warnings:
-      key === OPENWIKI_MODEL_ID_ENV_KEY
+      key === DOC_LOG_MODEL_ID_ENV_KEY
         ? getModelWarnings(value)
-        : key === OPENWIKI_PROVIDER_ENV_KEY
+        : key === DOC_LOG_PROVIDER_ENV_KEY
           ? getProviderWarnings(value)
           : getCredentialWarnings(value),
   };
@@ -173,9 +173,9 @@ function getProviderWarnings(value: string): string[] {
   return normalizeProvider(value) === null ? ["invalid provider"] : [];
 }
 
-async function readOpenWikiEnv(): Promise<EnvMap> {
+async function readDocLogEnv(): Promise<EnvMap> {
   try {
-    return parseEnv(await readFile(openWikiEnvPath, "utf8"));
+    return parseEnv(await readFile(docLogEnvPath, "utf8"));
   } catch (error) {
     if (isFileNotFoundError(error)) {
       return {};
