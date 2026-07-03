@@ -10,7 +10,15 @@ It is a fork of [langchain-ai/openwiki](https://github.com/langchain-ai/openwiki
 - A Cursor API key (`CURSOR_API_KEY`) — create one at Cursor Dashboard → Integrations
 - `git` available on your PATH
 
-## Install (from this repo)
+## Install
+
+```sh
+pnpm add -g doc-log-cli
+```
+
+The npm package is `doc-log-cli` (the name `doc-log` is taken). The command on your PATH is still `doc-log`.
+
+### Install from source (development)
 
 ```sh
 pnpm install
