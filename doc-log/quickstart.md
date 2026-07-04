@@ -156,7 +156,7 @@ src/
 
 Build output: `dist/cli.js` (see `package.json` `bin`).
 
-**Git note:** This repository currently has no commits on `master`. Init/update runs still work, but git summaries passed to the agent may show empty history or failed `HEAD` resolution until the first commit (`createGitSummary` in `src/agent/utils.ts` captures stderr rather than failing). After the first commit, future `--update` runs can diff meaningfully from `doc-log/.last-update.json`'s recorded `gitHead`. If `gitHead` in metadata is invalid, update runs fall back to `updatedAt` for log scoping.
+**Git note:** Update runs prefer the `gitHead` recorded in `doc-log/.last-update.json`. If `gitHead` is missing or invalid, update runs fall back to `updatedAt` for log scoping (`createGitSummary` in `src/agent/utils.ts` captures git stderr rather than failing the run).
 
 ## Development and CI
 

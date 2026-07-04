@@ -1,13 +1,13 @@
-export const DOC_LOG_DIR = "doc-log";
-export const UPDATE_METADATA_PATH = `${DOC_LOG_DIR}/.last-update.json`;
+export const OPEN_WIKI_DIR = "doc-log";
+export const UPDATE_METADATA_PATH = `${OPEN_WIKI_DIR}/.last-update.json`;
 export const CURSOR_API_KEY_ENV_KEY = "CURSOR_API_KEY";
-export const DOC_LOG_PROVIDER_ENV_KEY = "DOC_LOG_PROVIDER";
-export const DOC_LOG_MODEL_ID_ENV_KEY = "DOC_LOG_MODEL_ID";
+export const OPENWIKI_PROVIDER_ENV_KEY = "DOC_LOG_PROVIDER";
+export const OPENWIKI_MODEL_ID_ENV_KEY = "DOC_LOG_MODEL_ID";
 export const DEFAULT_PROVIDER = "cursor";
 
-export type DocLogProvider = "cursor";
+export type OpenWikiProvider = "cursor";
 
-export type SelectableDocLogProvider = DocLogProvider;
+export type SelectableOpenWikiProvider = OpenWikiProvider;
 
 export type ProviderModelOption = {
   id: string;
@@ -20,11 +20,11 @@ type ProviderConfig = {
   modelOptions: ProviderModelOption[];
 };
 
-export const SELECTABLE_DOC_LOG_PROVIDERS = [
+export const SELECTABLE_OPENWIKI_PROVIDERS = [
   "cursor",
-] as const satisfies readonly SelectableDocLogProvider[];
+] as const satisfies readonly SelectableOpenWikiProvider[];
 
-export const PROVIDER_CONFIGS: Record<DocLogProvider, ProviderConfig> = {
+export const PROVIDER_CONFIGS: Record<OpenWikiProvider, ProviderConfig> = {
   cursor: {
     apiKeyEnvKey: CURSOR_API_KEY_ENV_KEY,
     label: "Cursor",
@@ -38,31 +38,31 @@ export const PROVIDER_CONFIGS: Record<DocLogProvider, ProviderConfig> = {
 export const DEFAULT_MODEL_ID =
   PROVIDER_CONFIGS[DEFAULT_PROVIDER].modelOptions[0]?.id ?? "composer-2.5";
 
-export function getProviderConfig(provider: DocLogProvider): ProviderConfig {
+export function getProviderConfig(provider: OpenWikiProvider): ProviderConfig {
   return PROVIDER_CONFIGS[provider];
 }
 
-export function getProviderLabel(provider: DocLogProvider): string {
+export function getProviderLabel(provider: OpenWikiProvider): string {
   return getProviderConfig(provider).label;
 }
 
-export function getProviderApiKeyEnvKey(provider: DocLogProvider): string {
+export function getProviderApiKeyEnvKey(provider: OpenWikiProvider): string {
   return getProviderConfig(provider).apiKeyEnvKey;
 }
 
 export function getProviderModelOptions(
-  provider: DocLogProvider,
+  provider: OpenWikiProvider,
 ): ProviderModelOption[] {
   return getProviderConfig(provider).modelOptions;
 }
 
-export function getDefaultModelId(provider: DocLogProvider): string {
+export function getDefaultModelId(provider: OpenWikiProvider): string {
   return getProviderModelOptions(provider)[0]?.id ?? DEFAULT_MODEL_ID;
 }
 
 export function normalizeProvider(
   value: string | null | undefined,
-): DocLogProvider | null {
+): OpenWikiProvider | null {
   if (value === undefined || value === null) {
     return null;
   }
@@ -72,14 +72,14 @@ export function normalizeProvider(
   return isValidProvider(provider) ? provider : null;
 }
 
-export function isValidProvider(value: string): value is DocLogProvider {
+export function isValidProvider(value: string): value is OpenWikiProvider {
   return value in PROVIDER_CONFIGS;
 }
 
 export function resolveConfiguredProvider(
   env: NodeJS.ProcessEnv = process.env,
-): DocLogProvider {
-  return normalizeProvider(env[DOC_LOG_PROVIDER_ENV_KEY]) ?? DEFAULT_PROVIDER;
+): OpenWikiProvider {
+  return normalizeProvider(env[OPENWIKI_PROVIDER_ENV_KEY]) ?? DEFAULT_PROVIDER;
 }
 
 export function normalizeModelId(value: string): string {
@@ -97,24 +97,4 @@ export function isValidModelId(value: string): boolean {
   );
 }
 
-export function normalizeTarget(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_]+/gu, "-")
-    .replace(/[^a-z0-9-]/gu, "")
-    .replace(/-+/gu, "-")
-    .replace(/^-|-$/gu, "");
-}
-
-export function isValidTarget(value: string): boolean {
-  const target = normalizeTarget(value);
-
-  return (
-    target.length > 0 &&
-    target.length <= 80 &&
-    /^[a-z0-9][a-z0-9-]*$/u.test(target)
-  );
-}
-
-export const DOC_LOG_VERSION = "0.1.0";
+export const OPENWIKI_VERSION = "0.1.0";

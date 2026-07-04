@@ -1,12 +1,11 @@
-export type DocLogCommand = "chat" | "init" | "update" | "flow" | "section";
+export type OpenWikiCommand = "chat" | "init" | "update";
 
-export type DocLogRunResult = {
-  command: DocLogCommand;
+export type OpenWikiRunResult = {
+  command: OpenWikiCommand;
   model: string;
-  target?: string | null;
 };
 
-export type DocLogRunEvent =
+export type OpenWikiRunEvent =
   | {
       source?: "main" | "subgraph";
       type: "text";
@@ -30,19 +29,18 @@ export type DocLogRunEvent =
       message: string;
     };
 
-export type DocLogRunOptions = {
+export type OpenWikiRunOptions = {
   debug?: boolean;
   isFollowup?: boolean;
   modelId?: string | null;
-  onEvent?: (event: DocLogRunEvent) => void;
-  target?: string | null;
+  onEvent?: (event: OpenWikiRunEvent) => void;
   threadId?: string;
   userMessage?: string | null;
 };
 
 export type UpdateMetadata = {
   updatedAt: string;
-  command: DocLogCommand;
+  command: OpenWikiCommand;
   gitHead?: string;
   model: string;
 };

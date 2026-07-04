@@ -3,19 +3,19 @@ import { createHash } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
-import { DOC_LOG_DIR, UPDATE_METADATA_PATH } from "../constants.js";
-import type { DocLogCommand, RunContext, UpdateMetadata } from "./types.js";
+import { OPEN_WIKI_DIR, UPDATE_METADATA_PATH } from "../constants.js";
+import type { OpenWikiCommand, RunContext, UpdateMetadata } from "./types.js";
 import type { Dirent } from "node:fs";
 
 const execFileAsync = promisify(execFile);
 
-export type DocLogContentSnapshot = string;
+export type OpenWikiContentSnapshot = string;
 
 /**
  * Builds the per-run context the prompt uses to reason about prior docs and git changes.
  */
 export async function createRunContext(
-  command: DocLogCommand,
+  command: OpenWikiCommand,
   cwd: string,
 ): Promise<RunContext> {
   const lastUpdate = await readLastUpdate(cwd);
@@ -37,7 +37,7 @@ export async function createRunContext(
  * Records a successful init/update run so future updates can diff from this git head.
  */
 export async function writeLastUpdateMetadata(
-  command: DocLogCommand,
+  command: OpenWikiCommand,
   cwd: string,
   modelId: string,
 ): Promise<void> {
@@ -58,15 +58,15 @@ export async function writeLastUpdateMetadata(
 }
 
 /**
- * Hashes Doc-Log content, excluding run metadata, to detect real documentation changes.
+ * Hashes OpenWiki content, excluding run metadata, to detect real documentation changes.
  */
-export async function createDocLogContentSnapshot(
+export async function createOpenWikiContentSnapshot(
   cwd: string,
-): Promise<DocLogContentSnapshot> {
-  const docLogDir = path.join(cwd, DOC_LOG_DIR);
+): Promise<OpenWikiContentSnapshot> {
+  const openWikiDir = path.join(cwd, OPEN_WIKI_DIR);
   const hash = createHash("sha256");
 
-  await addDirectoryToSnapshot(hash, docLogDir, "");
+  await addDirectoryToSnapshot(hash, openWikiDir, "");
 
   return hash.digest("hex");
 }
@@ -108,7 +108,7 @@ async function readLastUpdate(cwd: string): Promise<UpdateMetadata | null> {
 }
 
 /**
- * Recursively adds stable file paths and bytes to the Doc-Log content snapshot.
+ * Recursively adds stable file paths and bytes to the OpenWiki content snapshot.
  */
 async function addDirectoryToSnapshot(
   hash: ReturnType<typeof createHash>,
@@ -179,7 +179,7 @@ async function readSnapshotFile(filePath: string): Promise<Buffer | null> {
  * Produces the git evidence block passed to init/update prompts.
  */
 async function createGitSummary(
-  command: DocLogCommand,
+  command: OpenWikiCommand,
   cwd: string,
   lastUpdate: UpdateMetadata | null,
 ): Promise<string> {

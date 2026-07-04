@@ -7,33 +7,32 @@ import {
   type SDKAgent,
   type SDKMessage,
 } from "@cursor/sdk";
-import { loadDocLogEnv, docLogEnvDir } from "../env.js";
+import { loadOpenWikiEnv, openWikiEnvDir } from "../env.js";
 import { createSystemPrompt, createUserPrompt } from "./prompt.js";
 import type {
-  DocLogCommand,
-  DocLogRunEvent,
-  DocLogRunOptions,
-  DocLogRunResult,
+  OpenWikiCommand,
+  OpenWikiRunEvent,
+  OpenWikiRunOptions,
+  OpenWikiRunResult,
 } from "./types.js";
 import {
   CURSOR_API_KEY_ENV_KEY,
   DEFAULT_MODEL_ID,
-  DOC_LOG_DIR,
   isValidModelId,
   normalizeModelId,
-  DOC_LOG_MODEL_ID_ENV_KEY,
+  OPENWIKI_MODEL_ID_ENV_KEY,
 } from "../constants.js";
 import {
-  createDocLogContentSnapshot,
+  createOpenWikiContentSnapshot,
   createRunContext,
   writeLastUpdateMetadata,
 } from "./utils.js";
 
-export async function runDocLogAgent(
-  command: DocLogCommand,
+export async function runOpenWikiAgent(
+  command: OpenWikiCommand,
   cwd = process.cwd(),
-  options: DocLogRunOptions = {},
-): Promise<DocLogRunResult> {
+  options: OpenWikiRunOptions = {},
+): Promise<OpenWikiRunResult> {
   emitDebug(options, `command=${command}`);
   emitDebug(options, `cwd=${cwd}`);
   emitDebug(
@@ -42,7 +41,7 @@ export async function runDocLogAgent(
   );
   emitDebug(options, `userMessage.followup=${options.isFollowup === true}`);
 
-  await loadDocLogEnv();
+  await loadOpenWikiEnv();
   emitDebug(options, "env=loaded ~/.doc-log/.env");
 
   const apiKey = process.env[CURSOR_API_KEY_ENV_KEY];
@@ -57,11 +56,11 @@ export async function runDocLogAgent(
 
   const context = await createRunContext(command, cwd);
   emitDebug(options, "context=created");
-  const docLogSnapshotBefore =
-    command === "chat" ? null : await createDocLogContentSnapshot(cwd);
-  emitDebug(options, "doc-log.snapshot=created");
+  const openWikiSnapshotBefore =
+    command === "chat" ? null : await createOpenWikiContentSnapshot(cwd);
+  emitDebug(options, "openwiki.snapshot=created");
 
-  const threadId = options.threadId ?? createDocLogThreadId(cwd);
+  const threadId = options.threadId ?? createOpenWikiThreadId(cwd);
   emitDebug(options, `thread=${threadId}`);
 
   let agent: SDKAgent | null = null;
@@ -98,7 +97,7 @@ export async function runDocLogAgent(
 
     if (
       command !== "chat" &&
-      docLogSnapshotBefore !== (await createDocLogContentSnapshot(cwd))
+      openWikiSnapshotBefore !== (await createOpenWikiContentSnapshot(cwd))
     ) {
       await writeLastUpdateMetadata(command, cwd, modelId);
       emitDebug(options, "metadata=written");
@@ -107,14 +106,13 @@ export async function runDocLogAgent(
         options,
         command === "chat"
           ? "metadata=skipped command=chat"
-          : "metadata=skipped doc-log=unchanged",
+          : "metadata=skipped openwiki=unchanged",
       );
     }
 
     return {
       command,
       model: modelId,
-      target: options.target ?? null,
     };
   } catch (error) {
     if (error instanceof CursorAgentError) {
@@ -139,7 +137,7 @@ async function createOrResumeAgent(
   cwd: string,
   apiKey: string,
   modelId: string,
-  options: DocLogRunOptions,
+  options: OpenWikiRunOptions,
 ): Promise<SDKAgent> {
   const existingAgentId = await readThreadAgentId(threadId);
 
@@ -178,23 +176,21 @@ async function disposeAgent(agent: SDKAgent): Promise<void> {
 }
 
 function createRunUserMessage(
-  command: DocLogCommand,
+  command: OpenWikiCommand,
   cwd: string,
   context: Awaited<ReturnType<typeof createRunContext>>,
-  options: DocLogRunOptions,
+  options: OpenWikiRunOptions,
 ): string {
   if (options.isFollowup === true && options.userMessage?.trim()) {
     return options.userMessage.trim();
   }
 
-  const target = options.target ?? null;
-
   return `
-${createSystemPrompt(command, target)}
+${createSystemPrompt(command)}
 
 ---
 
-${createUserPrompt(command, context, options.userMessage ?? null, target)}
+${createUserPrompt(command, context, options.userMessage ?? null)}
 
 Repository root:
 ${cwd}
@@ -202,11 +198,11 @@ ${cwd}
 Runtime note:
 - Treat the repository root above as the only project you are documenting.
 - Work only inside that repository. Do not read, search, or modify parent directories or unrelated repositories.
-- Use paths relative to the repository root, for example ${DOC_LOG_DIR}/quickstart.md and README.md.
+- Use paths relative to the repository root, for example doc-log/quickstart.md and README.md.
 `.trim();
 }
 
-const threadStatePath = path.join(docLogEnvDir, "threads.json");
+const threadStatePath = path.join(openWikiEnvDir, "threads.json");
 const MAX_THREAD_ENTRIES = 50;
 
 async function readThreadAgentId(threadId: string): Promise<string | null> {
@@ -227,7 +223,7 @@ async function saveThreadAgentId(
 
   const entries = Object.entries(state).slice(-MAX_THREAD_ENTRIES);
 
-  await mkdir(docLogEnvDir, {
+  await mkdir(openWikiEnvDir, {
     recursive: true,
     mode: 0o700,
   });
@@ -258,7 +254,7 @@ async function readThreadState(): Promise<Record<string, string>> {
   }
 }
 
-export function createDocLogThreadId(cwd = process.cwd()): string {
+export function createOpenWikiThreadId(cwd = process.cwd()): string {
   const digest = createHash("sha256").update(path.resolve(cwd)).digest("hex");
 
   return `doc-log-${digest.slice(0, 32)}-${createRunThreadId()}`;
@@ -270,23 +266,23 @@ function createRunThreadId(): string {
     .slice(2, 10)}`;
 }
 
-function resolveModelId(options: DocLogRunOptions): string {
+function resolveModelId(options: OpenWikiRunOptions): string {
   const rawModelId =
     options.modelId ??
-    process.env[DOC_LOG_MODEL_ID_ENV_KEY] ??
+    process.env[OPENWIKI_MODEL_ID_ENV_KEY] ??
     DEFAULT_MODEL_ID;
   const modelId = normalizeModelId(rawModelId);
 
   if (!isValidModelId(modelId)) {
     throw new Error(
-      `Invalid model ID configured in ${DOC_LOG_MODEL_ID_ENV_KEY}.`,
+      `Invalid model ID configured in ${OPENWIKI_MODEL_ID_ENV_KEY}.`,
     );
   }
 
   return modelId;
 }
 
-function mapSdkMessage(message: SDKMessage): DocLogRunEvent | null {
+function mapSdkMessage(message: SDKMessage): OpenWikiRunEvent | null {
   if (message.type === "assistant") {
     const text = message.message.content
       .filter(
@@ -300,7 +296,7 @@ function mapSdkMessage(message: SDKMessage): DocLogRunEvent | null {
       ? {
           source: "main",
           type: "text",
-          text,
+          text: `${text}\n\n`,
         }
       : null;
   }
@@ -367,7 +363,7 @@ function parseStringifiedJson(value: unknown): unknown {
   }
 }
 
-function emitDebug(options: DocLogRunOptions, message: string): void {
+function emitDebug(options: OpenWikiRunOptions, message: string): void {
   if (!options.debug) {
     return;
   }
