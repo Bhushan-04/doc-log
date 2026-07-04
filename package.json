@@ -1,6 +1,6 @@
 {
   "name": "doc-log-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A CLI that uses the Cursor agent (via CURSOR_API_KEY) to generate and maintain Doc-Log documentation for a codebase.",
   "license": "MIT",
   "repository": {
